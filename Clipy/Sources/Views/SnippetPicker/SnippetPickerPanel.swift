@@ -356,7 +356,6 @@ struct SnippetPickerPanelView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .popoverTip(SnippetNavigationTip(), arrowEdge: .bottom)
     }
 
     // MARK: - List
