@@ -116,6 +116,7 @@ struct Constants {
 
     struct Developer {
         static let devModeEnabled = "kCPYDevModeEnabled"
+        static let hotkeysDisabled = "kCPYDevHotkeysDisabled"
     }
 
     struct PanelShortcuts {

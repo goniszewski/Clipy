@@ -61,9 +61,27 @@ extension HotKeyService {
     }
 }
 
+// MARK: - Enable / Disable All
+extension HotKeyService {
+    func disableAllHotKeys() {
+        HotKeyCenter.shared.unregisterAll()
+        logger.info("All hotkeys disabled")
+    }
+
+    func enableAllHotKeys() {
+        setupDefaultHotKeys()
+        logger.info("All hotkeys re-enabled")
+    }
+}
+
 // MARK: - Setup
 extension HotKeyService {
     func setupDefaultHotKeys() {
+        // Skip registration if hotkeys are disabled via Developer Mode
+        if AppEnvironment.current.defaults.bool(forKey: Constants.Developer.hotkeysDisabled) {
+            logger.info("Hotkeys disabled via Developer Mode — skipping registration")
+            return
+        }
         // Migration new framework
         if !AppEnvironment.current.defaults.bool(forKey: Constants.HotKey.migrateNewKeyCombo) {
             migrationKeyCombos()

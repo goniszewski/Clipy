@@ -407,6 +407,36 @@ struct DeveloperPreferencesView: View {
                 }
                 .padding(.horizontal, 24)
 
+                // Global Hotkeys Toggle
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Global Hotkeys", systemImage: "globe")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        Toggle(isOn: Binding(
+                            get: { UserDefaults.standard.bool(forKey: Constants.Developer.hotkeysDisabled) },
+                            set: { disabled in
+                                UserDefaults.standard.set(disabled, forKey: Constants.Developer.hotkeysDisabled)
+                                if disabled {
+                                    AppEnvironment.current.hotKeyService.disableAllHotKeys()
+                                } else {
+                                    AppEnvironment.current.hotKeyService.enableAllHotKeys()
+                                }
+                            }
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Disable Global Hotkeys")
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("Allows running Clipy Dev alongside the release build without hotkey conflicts.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal, 24)
+
                 // Danger Zone
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {

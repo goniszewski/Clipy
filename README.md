@@ -201,7 +201,7 @@ open Clipy.xcworkspace
 
 ### Dev Build vs Release
 
-Both can coexist on the same Mac with separate data — just don't run both at the same time (hotkey conflicts).
+Both can coexist on the same Mac with separate data. To run both simultaneously, enable Developer Mode in the dev build's settings and toggle **"Disable Global Hotkeys"** — this prevents hotkey conflicts.
 
 | | **Clipy** (Release) | **Clipy Dev** (Debug) |
 |---|---|---|
