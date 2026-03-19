@@ -151,7 +151,12 @@ Collect multiple clips and paste them all at once — merged with a configurable
 
 ## Keyboard Shortcuts
 
-All hotkeys (search panel, snippets, snippet folders) are configurable in Settings → Shortcuts.
+Default global hotkeys (configurable in Settings → Shortcuts):
+
+| Shortcut | Action |
+|---|---|
+| `Shift+Cmd+V` | Open search panel (clipboard history) |
+| `Shift+Cmd+B` | Open snippet picker |
 
 ### Search Panel
 

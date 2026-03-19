@@ -20,14 +20,17 @@ private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "HotKey"
 final class HotKeyService: NSObject {
 
     // MARK: - Properties
-    // Dev build uses Option-based shortcuts to avoid conflicting with installed Clipy
+    // Default shortcuts — main menu hotkey left empty to avoid conflicts
+    // Modifiers: Shift+Cmd = 768 (256 shift + 512 cmd) -- actually let me check
+    // NSEvent.ModifierFlags.shift.rawValue = 131072, .command.rawValue = 1048576
+    // Carbon modifiers: shiftKey = 512, cmdKey = 256 → combined = 768
     static var defaultKeyCombos: [String: Any] = {
-        // MainMenu:    ⌘ + Option + V
-        // HistoryMenu: ⌘ + Option + Control + V
-        // SnippetMenu: ⌘ + Option + B
-        return [Constants.Menu.clip: ["keyCode": 9, "modifiers": 2816],
-                Constants.Menu.history: ["keyCode": 9, "modifiers": 6400],
-                Constants.Menu.snippet: ["keyCode": 11, "modifiers": 2816]]
+        // MainMenu:       (none — legacy NSMenu, use search panel instead)
+        // HistoryMenu:    Shift + ⌘ + V  (opens search panel)
+        // SnippetMenu:    Shift + ⌘ + B  (opens snippet picker)
+        // ClearHistory:   Shift + ⌘ + D  (clear history)
+        return [Constants.Menu.history: ["keyCode": 9, "modifiers": 768],
+                Constants.Menu.snippet: ["keyCode": 11, "modifiers": 768]]
     }()
 
     fileprivate(set) var mainKeyCombo: KeyCombo?
