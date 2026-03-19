@@ -187,7 +187,7 @@ footer a:hover{color:var(--accent)}
   <div class="container">
     <div class="hero-badge reveal">
       <span class="dot"></span>
-      v2.0.0 — Complete SwiftUI Rewrite
+      <span id="hero-version">Latest Release</span>
     </div>
     <h1 class="reveal reveal-delay-1">Your clipboard,<br><span class="gradient">supercharged.</span></h1>
     <p class="reveal reveal-delay-2">A modern clipboard manager for macOS — rebuilt with a Spotlight-style search panel, syntax highlighting, OCR, smart actions, vault protection, and way too many keyboard shortcuts.</p>
@@ -645,11 +645,13 @@ fetch('https://api.github.com/repos/jeanluciradukunda/Clipy/releases/latest')
         btn.href = dmg.browser_download_url;
       });
     }
-    // Update version in What's New title
+    // Update version everywhere
     const version = release.tag_name || '';
-    const vTitle = document.getElementById('version-title');
-    if (vTitle && version) {
-      vTitle.textContent = version + ' — Latest Release';
+    if (version) {
+      const vTitle = document.getElementById('version-title');
+      if (vTitle) vTitle.textContent = version + ' — Latest Release';
+      const heroV = document.getElementById('hero-version');
+      if (heroV) heroV.textContent = version + ' — Download Now';
     }
   })
   .catch(() => {});
