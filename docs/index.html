@@ -191,7 +191,7 @@ footer a:hover{color:var(--accent)}
     <h1 class="reveal reveal-delay-1">Your clipboard,<br><span class="gradient">supercharged.</span></h1>
     <p class="reveal reveal-delay-2">A modern clipboard manager for macOS — rebuilt with a Spotlight-style search panel, syntax highlighting, OCR, smart actions, vault protection, and way too many keyboard shortcuts.</p>
     <div class="hero-buttons reveal reveal-delay-3">
-      <a href="https://github.com/jeanluciradukunda/Clipy/releases/latest" class="btn-primary">
+      <a href="https://github.com/jeanluciradukunda/Clipy/releases/latest" class="btn-primary" id="download-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v8m-4-4l4 4 4-4"/></svg>
         Download for macOS
       </a>
@@ -478,7 +478,7 @@ footer a:hover{color:var(--accent)}
       <h2 style="font-size:clamp(28px,4vw,40px);font-weight:700;letter-spacing:-.03em;margin-bottom:12px">Ready to upgrade your clipboard?</h2>
       <p style="font-size:16px;color:var(--text-dim);margin-bottom:32px;font-weight:300">Free, open source, and built for people who copy things a lot.</p>
       <div class="hero-buttons">
-        <a href="https://github.com/jeanluciradukunda/Clipy/releases/latest" class="btn-primary">
+        <a href="https://github.com/jeanluciradukunda/Clipy/releases/latest" class="btn-primary" id="download-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v8m-4-4l4 4 4-4"/></svg>
           Download v2.0.0
         </a>
@@ -539,6 +539,19 @@ window.addEventListener('scroll', () => {
   const nav = document.querySelector('nav');
   nav.style.background = window.scrollY > 50 ? 'rgba(10,10,12,.85)' : 'rgba(10,10,12,.7)';
 });
+
+// Resolve download buttons to direct .dmg URL
+fetch('https://api.github.com/repos/jeanluciradukunda/Clipy/releases/latest')
+  .then(r => r.json())
+  .then(release => {
+    const dmg = release.assets?.find(a => a.name.endsWith('.dmg'));
+    if (dmg) {
+      document.querySelectorAll('#download-btn').forEach(btn => {
+        btn.href = dmg.browser_download_url;
+      });
+    }
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>
