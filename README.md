@@ -22,7 +22,13 @@
 
 ### Download
 
-Grab the latest `.dmg` from [**Releases**](https://github.com/jeanluciradukunda/Clipy/releases/latest), open it, and drag Clipy to Applications.
+1. Grab the latest `.dmg` from [**Releases**](https://github.com/jeanluciradukunda/Clipy/releases/latest)
+2. Open the DMG and drag Clipy to Applications
+3. If macOS shows a security warning, right-click the app → **Open** → **Open Anyway**, or run:
+   ```bash
+   xattr -cr /Applications/Clipy.app
+   ```
+   > This is expected — the app is not notarized yet. We're working on Apple Developer ID signing.
 
 ### Build from Source
 
@@ -35,6 +41,17 @@ open Clipy.xcworkspace
 ```
 
 **Requires**: macOS 14.0 Sonoma+ and Xcode 15.0+
+
+### Uninstall
+
+1. Quit Clipy (click the menu bar icon → Quit, or `Cmd+Q`)
+2. Drag Clipy from Applications to Trash
+3. Remove app data (optional):
+   ```bash
+   rm -rf ~/Library/Application\ Support/com.clipy-app.Clipy/
+   defaults delete com.clipy-app.Clipy
+   ```
+4. Remove from System Settings → Privacy & Security → Accessibility
 
 ---
 

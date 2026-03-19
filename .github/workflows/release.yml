@@ -110,7 +110,10 @@ jobs:
             ### Install
             1. Download `Clipy-${{ steps.version.outputs.VERSION }}.dmg` below
             2. Open the DMG and drag Clipy to Applications
-            3. Launch Clipy — it appears in your menu bar
+            3. **If macOS blocks it**: right-click → Open → Open Anyway, or run `xattr -cr /Applications/Clipy.app`
+            4. Launch Clipy — it appears in your menu bar
+
+            > **Note:** The app is not yet notarized with Apple. The security warning is expected and safe to bypass.
 
             **Requires macOS 14.0 Sonoma or later.**
           files: |
