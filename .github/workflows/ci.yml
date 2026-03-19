@@ -32,14 +32,10 @@ jobs:
           xcodebuild \
             -workspace Clipy.xcworkspace \
             -scheme Clipy \
+            -target Clipy \
             -configuration Debug \
             -destination 'platform=macOS' \
-            -skipPackagePluginValidation \
-            -disableAutomaticPackageResolution \
             ONLY_ACTIVE_ARCH=YES \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            build \
-            SKIP_INSTALL=YES \
-            BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
-            -skip-testing
+            build
