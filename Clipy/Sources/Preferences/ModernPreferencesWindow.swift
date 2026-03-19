@@ -413,25 +413,31 @@ struct DeveloperPreferencesView: View {
                         Label("Global Hotkeys", systemImage: "globe")
                             .font(.system(size: 13, weight: .semibold))
 
-                        Toggle(isOn: Binding(
-                            get: { UserDefaults.standard.bool(forKey: Constants.Developer.hotkeysDisabled) },
-                            set: { disabled in
-                                UserDefaults.standard.set(disabled, forKey: Constants.Developer.hotkeysDisabled)
-                                if disabled {
-                                    AppEnvironment.current.hotKeyService.disableAllHotKeys()
-                                } else {
-                                    AppEnvironment.current.hotKeyService.enableAllHotKeys()
-                                }
+                        HStack(spacing: 16) {
+                            hotKeyOptionButton(
+                                label: "Enabled",
+                                icon: "keyboard",
+                                color: .green,
+                                isSelected: !UserDefaults.standard.bool(forKey: Constants.Developer.hotkeysDisabled)
+                            ) {
+                                UserDefaults.standard.set(false, forKey: Constants.Developer.hotkeysDisabled)
+                                AppEnvironment.current.hotKeyService.enableAllHotKeys()
                             }
-                        )) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Disable Global Hotkeys")
-                                    .font(.system(size: 12, weight: .medium))
-                                Text("Allows running Clipy Dev alongside the release build without hotkey conflicts.")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.tertiary)
+
+                            hotKeyOptionButton(
+                                label: "Disabled",
+                                icon: "keyboard.badge.ellipsis",
+                                color: .orange,
+                                isSelected: UserDefaults.standard.bool(forKey: Constants.Developer.hotkeysDisabled)
+                            ) {
+                                UserDefaults.standard.set(true, forKey: Constants.Developer.hotkeysDisabled)
+                                AppEnvironment.current.hotKeyService.disableAllHotKeys()
                             }
                         }
+
+                        Text("Disable hotkeys to run Clipy Dev alongside the release build without conflicts.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
                     }
                     .padding(8)
                 }
@@ -465,6 +471,33 @@ struct DeveloperPreferencesView: View {
             }
         }
         .onAppear { loadDatabaseInfo() }
+    }
+
+    // MARK: - Hotkey Option Button
+
+    private func hotKeyOptionButton(label: String, icon: String, color: SwiftUI.Color, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: isSelected ? "circle.inset.filled" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(isSelected ? color : .secondary)
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(isSelected ? color : .secondary)
+                Text(label)
+                    .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? color.opacity(0.1) : .clear)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(isSelected ? color.opacity(0.3) : .clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Actions
