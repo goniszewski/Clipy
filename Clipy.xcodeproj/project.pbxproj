@@ -1221,7 +1221,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				CLIPY_DISPLAY_NAME = "Clipy Dev";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.clipy-app.Clipy-Dev.debug";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = Clipy;
+				PRODUCT_NAME = "Clipy Dev";
 				PROVISIONING_PROFILE = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1280,7 +1281,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.9;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Clipy.app/Contents/MacOS/Clipy";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Clipy Dev.app/Contents/MacOS/Clipy Dev";
 			};
 			name = Debug;
 		};
