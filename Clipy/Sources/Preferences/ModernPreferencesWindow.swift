@@ -884,99 +884,70 @@ struct RadarChartView: View {
     var body: some View {
         GeometryReader { geo in
             let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let radius = min(geo.size.width, geo.size.height) / 2 - 30
-            let count = data.count
-            let angleStep = (2 * .pi) / Double(count)
+            let radius: CGFloat = min(geo.size.width, geo.size.height) / 2 - 30
+            Canvas { context, _ in
+                let count = data.count
+                guard !data.isEmpty else { return }
+                let step: Double = (2 * .pi) / Double(count)
 
-            ZStack {
                 // Grid rings
-                ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { ring in
-                    Path { path in
-                        for i in 0..<count {
-                            let angle = angleStep * Double(i) - .pi / 2
-                            let point = CGPoint(
-                                x: center.x + cos(angle) * radius * ring,
-                                y: center.y + sin(angle) * radius * ring
-                            )
-                            if i == 0 { path.move(to: point) }
-                            else { path.addLine(to: point) }
-                        }
-                        path.closeSubpath()
+                for ring in [0.25, 0.5, 0.75, 1.0] {
+                    var gridPath = Path()
+                    for idx in 0..<count {
+                        let ang: Double = step * Double(idx) - .pi / 2
+                        let pt = CGPoint(x: center.x + cos(ang) * radius * ring, y: center.y + sin(ang) * radius * ring)
+                        if idx == 0 { gridPath.move(to: pt) } else { gridPath.addLine(to: pt) }
                     }
-                    .stroke(.white.opacity(0.06), lineWidth: 0.5)
+                    gridPath.closeSubpath()
+                    context.stroke(gridPath, with: .color(.white.opacity(0.06)), lineWidth: 0.5)
                 }
 
                 // Axis lines
-                ForEach(0..<count, id: \.self) { i in
-                    let angle = angleStep * Double(i) - .pi / 2
-                    Path { path in
-                        path.move(to: center)
-                        path.addLine(to: CGPoint(
-                            x: center.x + cos(angle) * radius,
-                            y: center.y + sin(angle) * radius
-                        ))
-                    }
-                    .stroke(.white.opacity(0.04), lineWidth: 0.5)
+                for idx in 0..<count {
+                    let ang: Double = step * Double(idx) - .pi / 2
+                    var axisPath = Path()
+                    axisPath.move(to: center)
+                    axisPath.addLine(to: CGPoint(x: center.x + cos(ang) * radius, y: center.y + sin(ang) * radius))
+                    context.stroke(axisPath, with: .color(.white.opacity(0.04)), lineWidth: 0.5)
                 }
 
                 // Data polygon
-                Path { path in
-                    for i in 0..<count {
-                        let angle = angleStep * Double(i) - .pi / 2
-                        let val = max(0.02, data[i].value)
-                        let point = CGPoint(
-                            x: center.x + cos(angle) * radius * val,
-                            y: center.y + sin(angle) * radius * val
-                        )
-                        if i == 0 { path.move(to: point) }
-                        else { path.addLine(to: point) }
-                    }
-                    path.closeSubpath()
+                var dataPath = Path()
+                for idx in 0..<count {
+                    let ang: Double = step * Double(idx) - .pi / 2
+                    let val: Double = max(0.02, data[idx].value)
+                    let pt = CGPoint(x: center.x + cos(ang) * radius * val, y: center.y + sin(ang) * radius * val)
+                    if idx == 0 { dataPath.move(to: pt) } else { dataPath.addLine(to: pt) }
                 }
-                .fill(.orange.opacity(0.15))
-
-                Path { path in
-                    for i in 0..<count {
-                        let angle = angleStep * Double(i) - .pi / 2
-                        let val = max(0.02, data[i].value)
-                        let point = CGPoint(
-                            x: center.x + cos(angle) * radius * val,
-                            y: center.y + sin(angle) * radius * val
-                        )
-                        if i == 0 { path.move(to: point) }
-                        else { path.addLine(to: point) }
-                    }
-                    path.closeSubpath()
-                }
-                .stroke(.orange, lineWidth: 1.5)
+                dataPath.closeSubpath()
+                context.fill(dataPath, with: .color(.orange.opacity(0.15)))
+                context.stroke(dataPath, with: .color(.orange), lineWidth: 1.5)
 
                 // Data points
-                ForEach(0..<count, id: \.self) { i in
-                    let angle = angleStep * Double(i) - .pi / 2
-                    let val = max(0.02, data[i].value)
-                    Circle()
-                        .fill(.orange)
-                        .frame(width: 4, height: 4)
-                        .position(
-                            x: center.x + cos(angle) * radius * val,
-                            y: center.y + sin(angle) * radius * val
-                        )
-                }
-
-                // Labels
-                ForEach(0..<count, id: \.self) { i in
-                    let angle = angleStep * Double(i) - .pi / 2
-                    let labelRadius = radius + 18
-                    Text(data[i].label)
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .position(
-                            x: center.x + cos(angle) * labelRadius,
-                            y: center.y + sin(angle) * labelRadius
-                        )
+                for idx in 0..<count {
+                    let ang: Double = step * Double(idx) - .pi / 2
+                    let val: Double = max(0.02, data[idx].value)
+                    let pt = CGPoint(x: center.x + cos(ang) * radius * val, y: center.y + sin(ang) * radius * val)
+                    context.fill(Circle().path(in: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4)), with: .color(.orange))
                 }
             }
+
+            // Labels as SwiftUI Text (outside Canvas for proper rendering)
+            ForEach(0..<data.count, id: \.self) { idx in
+                radarLabel(idx: idx, center: center, radius: radius)
+            }
         }
+    }
+
+    private func radarLabel(idx: Int, center: CGPoint, radius: CGFloat) -> some View {
+        let count = data.count
+        let step: Double = (2 * .pi) / Double(count)
+        let ang: Double = step * Double(idx) - .pi / 2
+        let labelR: CGFloat = radius + 18
+        return Text(data[idx].label)
+            .font(.system(size: 8, weight: .medium))
+            .foregroundStyle(.secondary)
+            .position(x: center.x + cos(ang) * labelR, y: center.y + sin(ang) * labelR)
     }
 }
 
