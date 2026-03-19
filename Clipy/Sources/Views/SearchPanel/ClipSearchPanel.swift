@@ -538,6 +538,7 @@ struct ClipSearchPanelView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
+        .popoverTip(QuickSelectTip(), arrowEdge: .bottom)
     }
 
     // MARK: - Filter Bar
@@ -559,6 +560,7 @@ struct ClipSearchPanelView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 8)
         }
+        .popoverTip(FiltersTip(), arrowEdge: .bottom)
     }
 
     private func countFor(_ filter: ClipFilter) -> Int? {
@@ -876,6 +878,7 @@ struct ClipSearchPanelView: View {
                 ActionButton(label: "Plain Text", icon: "textformat", shortcut: shortcuts.pastePlain.label) {
                     viewModel.pasteAsPlainText()
                 }
+                .popoverTip(PlainTextTip(), arrowEdge: .bottom)
 
                 // OCR + Share for images
                 if clip.pasteboardType.isTIFFType() {
@@ -883,6 +886,7 @@ struct ClipSearchPanelView: View {
                     ActionButton(label: "OCR", icon: "text.viewfinder", shortcut: shortcuts.ocr.label) {
                         viewModel.runOCR()
                     }
+                    .popoverTip(OCRTip(), arrowEdge: .bottom)
                     ShareActionButton(shortcut: shortcuts.share.label) { anchorView in
                         viewModel.shareImage(from: anchorView)
                     }

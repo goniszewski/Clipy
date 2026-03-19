@@ -640,6 +640,7 @@ struct ModernSnippetsEditorView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
         }
+        .popoverTip(SnippetVariablesTip(), arrowEdge: .top)
     }
 
     private var editorFooter: some View {
