@@ -444,7 +444,7 @@ footer a:hover{color:var(--accent)}
 <section class="section" id="changelog">
   <div class="container">
     <div class="section-label reveal">What's New</div>
-    <h2 class="section-title reveal reveal-delay-1">v2.0.0 — The Big One</h2>
+    <h2 class="section-title reveal reveal-delay-1" id="version-title">v2.0 — The Big One</h2>
     <p class="section-desc reveal reveal-delay-2">A complete rewrite of Clipy. Everything is new. <a href="https://github.com/jeanluciradukunda/Clipy/blob/main/CHANGELOG.md" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">Full changelog →</a></p>
 
     <div class="changelog">
@@ -644,6 +644,12 @@ fetch('https://api.github.com/repos/jeanluciradukunda/Clipy/releases/latest')
       document.querySelectorAll('#download-btn').forEach(btn => {
         btn.href = dmg.browser_download_url;
       });
+    }
+    // Update version in What's New title
+    const version = release.tag_name || '';
+    const vTitle = document.getElementById('version-title');
+    if (vTitle && version) {
+      vTitle.textContent = version + ' — Latest Release';
     }
   })
   .catch(() => {});
