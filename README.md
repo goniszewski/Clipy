@@ -4,125 +4,220 @@
 
 <br>
 
-![CI](https://github.com/Clipy/Clipy/workflows/CI/badge.svg)
-[![Release version](https://img.shields.io/github/release/Clipy/Clipy.svg)](https://github.com/Clipy/Clipy/releases/latest)
-[![OpenCollective](https://opencollective.com/clipy/backers/badge.svg)](#backers)
-[![OpenCollective](https://opencollective.com/clipy/sponsors/badge.svg)](#sponsors)
+[![CI](https://github.com/jeanluciradukunda/Clipy/actions/workflows/ci.yml/badge.svg)](https://github.com/jeanluciradukunda/Clipy/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/jeanluciradukunda/Clipy)](https://github.com/jeanluciradukunda/Clipy/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-brightgreen)](https://github.com/jeanluciradukunda/Clipy/releases)
 
-Clipy is a Clipboard extension app for macOS.
+**Clipy** is a clipboard manager for macOS — rebuilt with a modern SwiftUI interface, Spotlight-style search, syntax highlighting, OCR, smart actions, and more.
+
+> *Forked from [Clipy/Clipy](https://github.com/Clipy/Clipy) — the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project.*
+
+<!-- TODO: Add demo GIF or video recorded with Screen Studio -->
+<!-- <p align="center"><img src="./Resources/demo.gif" width="700"></p> -->
 
 ---
 
-__Requirement__: macOS 10.10 Yosemite or higher
+## Install
 
-__Distribution Site__ : <https://clipy-app.com>
+### Download
 
-<img src="http://clipy-app.com/img/screenshot1.png" width="400">
+Grab the latest `.dmg` from [**Releases**](https://github.com/jeanluciradukunda/Clipy/releases/latest), open it, and drag Clipy to Applications.
 
-### Development Environment
-* macOS 10.15 Catalina
-* Xcode 12.2
-* Swift 5.3
+### Build from Source
 
-### How to Build
-0. Move to the project root directory
-1. `bundle install --path=vendor/bundle && bundle exec pod install`
-2. Open `Clipy.xcworkspace` on Xcode.
-3. build.
+```bash
+git clone https://github.com/jeanluciradukunda/Clipy.git && cd Clipy
+bundle install --path=vendor/bundle
+bundle exec pod install
+open Clipy.xcworkspace
+# Build (Cmd+B) and Run (Cmd+R) the "Clipy" scheme
+```
 
-### Contributing
-1. Fork it ( https://github.com/Clipy/Clipy/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+**Requires**: macOS 14.0 Sonoma+ and Xcode 15.0+
 
-### Localization Contributors
-Clipy is looking for localization contributors.  
-If you can contribute, please see [CONTRIBUTING.md](https://github.com/Clipy/Clipy/blob/master/.github/CONTRIBUTING.md)
+---
 
-### Distribution
-If you distribute derived work, especially in the Mac App Store, I ask you to follow two rules:
+## Features
 
-1. Don't use `Clipy` and `ClipMenu` as your product name.
-2. Follow the MIT license terms.
+### Search Panel
 
-Thank you for your cooperation.
+A Spotlight-style search panel with split-pane layout: filterable clip list on the left, rich preview + action bar on the right.
 
-### Backers
+- **Fuzzy search** across all clipboard history
+- **Content filters**: All, Text, Images, Links, Files, Pinned, Queue
+- **Keyboard-driven**: arrow keys to navigate, `Return` to paste, `Shift+Return` for plain text
+- **Quick select**: type a number to paste instantly — single digits or two digits rapidly (e.g. `1` `5` for item 15, up to 30)
+- **Multi-select**: `Shift+Up/Down` to select multiple clips, `Cmd+Backspace` to bulk delete
+- **Pin clips** to keep them at the top (`Cmd+P`)
 
-Support us with a monthly donation and help us continue our activities. [[Become a backer](https://opencollective.com/clipy#backer)]
+### Syntax Highlighting
 
-<a href="https://opencollective.com/clipy/backer/0/website" target="_blank"><img src="https://opencollective.com/clipy/backer/0/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/1/website" target="_blank"><img src="https://opencollective.com/clipy/backer/1/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/2/website" target="_blank"><img src="https://opencollective.com/clipy/backer/2/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/3/website" target="_blank"><img src="https://opencollective.com/clipy/backer/3/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/4/website" target="_blank"><img src="https://opencollective.com/clipy/backer/4/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/5/website" target="_blank"><img src="https://opencollective.com/clipy/backer/5/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/6/website" target="_blank"><img src="https://opencollective.com/clipy/backer/6/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/7/website" target="_blank"><img src="https://opencollective.com/clipy/backer/7/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/8/website" target="_blank"><img src="https://opencollective.com/clipy/backer/8/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/9/website" target="_blank"><img src="https://opencollective.com/clipy/backer/9/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/10/website" target="_blank"><img src="https://opencollective.com/clipy/backer/10/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/11/website" target="_blank"><img src="https://opencollective.com/clipy/backer/11/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/12/website" target="_blank"><img src="https://opencollective.com/clipy/backer/12/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/13/website" target="_blank"><img src="https://opencollective.com/clipy/backer/13/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/14/website" target="_blank"><img src="https://opencollective.com/clipy/backer/14/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/15/website" target="_blank"><img src="https://opencollective.com/clipy/backer/15/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/16/website" target="_blank"><img src="https://opencollective.com/clipy/backer/16/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/17/website" target="_blank"><img src="https://opencollective.com/clipy/backer/17/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/18/website" target="_blank"><img src="https://opencollective.com/clipy/backer/18/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/19/website" target="_blank"><img src="https://opencollective.com/clipy/backer/19/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/20/website" target="_blank"><img src="https://opencollective.com/clipy/backer/20/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/21/website" target="_blank"><img src="https://opencollective.com/clipy/backer/21/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/22/website" target="_blank"><img src="https://opencollective.com/clipy/backer/22/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/23/website" target="_blank"><img src="https://opencollective.com/clipy/backer/23/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/24/website" target="_blank"><img src="https://opencollective.com/clipy/backer/24/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/25/website" target="_blank"><img src="https://opencollective.com/clipy/backer/25/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/26/website" target="_blank"><img src="https://opencollective.com/clipy/backer/26/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/27/website" target="_blank"><img src="https://opencollective.com/clipy/backer/27/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/28/website" target="_blank"><img src="https://opencollective.com/clipy/backer/28/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/backer/29/website" target="_blank"><img src="https://opencollective.com/clipy/backer/29/avatar.svg"></a>
+Automatic language detection and syntax highlighting for 16+ languages:
+JSON, JavaScript, TypeScript, Python, Swift, Java, HTML, CSS, SQL, Shell, Ruby, Go, Rust, C#, C++, YAML
 
-### Sponsors
+### OCR
 
-Become a sponsor and get your logo on our README on Github with a link to your site. [[Become a sponsor](https://opencollective.com/clipy#sponsor)]
+Extract text from image clips using the macOS Vision framework. Click **OCR** when previewing an image — extracted text can be copied directly.
 
-<a href="https://opencollective.com/clipy/sponsor/0/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/0/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/1/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/1/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/2/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/2/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/3/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/3/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/4/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/4/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/5/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/5/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/6/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/6/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/7/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/7/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/8/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/8/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/9/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/9/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/10/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/10/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/11/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/11/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/12/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/12/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/13/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/13/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/14/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/14/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/15/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/15/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/16/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/16/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/17/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/17/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/18/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/18/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/19/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/19/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/20/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/20/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/21/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/21/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/22/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/22/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/23/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/23/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/24/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/24/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/25/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/25/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/26/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/26/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/27/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/27/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/28/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/28/avatar.svg"></a>
-<a href="https://opencollective.com/clipy/sponsor/29/website" target="_blank"><img src="https://opencollective.com/clipy/sponsor/29/avatar.svg"></a>
+### Smart Actions
 
-### Licence
-Clipy is available under the MIT license. See the LICENSE file for more info.
+The action bar adapts to the selected clip's content type:
 
-Icons are copyrighted by their respective authors.
+**Text clips:**
+- **UPPER / lower / Title** — case transforms, copied to clipboard
+- **Detected content** — clickable badges for URLs (open browser), emails (compose), phone numbers (call), IP addresses (copy)
 
-### Special Thanks
-__Thank you for [@naotaka](https://github.com/naotaka) who have published [ClipMenu](https://github.com/naotaka/ClipMenu) as OSS.__
+**JSON clips:**
+- **Format** — pretty-print with indentation for readability
+- **Minify** — compress to single line for storage/transport
+
+**URL clips:**
+- **Clean URL** — strips tracking parameters (UTM, fbclid, gclid, msclkid, and 50+ others)
+- **Clickable preview** — blue underlined URL opens in default browser
+
+**Image clips:**
+- **OCR** — extract text from the image using macOS Vision framework
+- **Share** — native macOS share sheet (AirDrop, Messages, Mail, other apps)
+
+**Color codes:**
+- **Visual swatch** — hex color codes show a color preview in the clip list
+
+### Snippet Picker
+
+Spotlight-style snippet browser with folder navigation, search, and keyboard shortcuts. Type a number to quick-paste by position.
+
+### Snippet Editor
+
+Full-featured SwiftUI snippet editor with:
+- Sidebar folder/snippet navigation (arrow keys, expand/collapse)
+- Inline rename (double-click)
+- Variable insertion toolbar
+- Import/export as XML
+
+### Snippet Variables
+
+Dynamic variables that expand at paste time:
+
+| Variable | Output |
+|---|---|
+| `%DATE%` | Current date (yyyy-MM-dd) |
+| `%TIME%` | Current time (HH:mm:ss) |
+| `%DATETIME%` | Date + time |
+| `%DAY%` | Day of the week |
+| `%MONTH%` | Current month name |
+| `%YEAR%` | Current year |
+| `%TIMESTAMP%` | Unix timestamp |
+| `%CLIPBOARD%` | Current clipboard text |
+| `%UUID%` | Random UUID |
+| `%RANDOM%` | Random 4-digit number |
+
+### Vault Folders
+
+Protect sensitive snippets with Touch ID or password authentication. Vault folders stay locked until you authenticate — hidden from search and the snippet picker until unlocked.
+
+### Clipboard Queue (Collect Mode)
+
+Collect multiple clips and paste them all at once — merged with a configurable separator (newline, comma, tab, space) or pasted one-by-one sequentially.
+
+### Other Features
+
+- **Color code detection** with visual swatch preview
+- **Exclude apps** from clipboard monitoring
+- **Hotkey support** for history, snippets, and snippet folders
+- **Auto-launch** on system startup
+- **Auto-update** via Sparkle
+
+---
+
+## Keyboard Shortcuts
+
+All hotkeys (search panel, snippets, snippet folders) are configurable in Settings → Shortcuts.
+
+### Search Panel
+
+| Shortcut | Action |
+|---|---|
+| `Up/Down` | Navigate clips (hold to repeat) |
+| `Shift+Up/Down` | Extend multi-selection |
+| `Return` | Paste selected clip |
+| `Shift+Return` | Paste as plain text |
+| `1`-`30` (type rapidly) | Quick select by number |
+| `Cmd+P` | Pin/unpin clip |
+| `Cmd+Backspace` | Delete selected clip(s) |
+| `Cmd+O` | OCR — extract text from image |
+| `Cmd+S` | Share image via system share sheet |
+| `Escape` | Close panel |
+
+### Snippet Picker
+
+| Shortcut | Action |
+|---|---|
+| `Up/Down` | Navigate folders and snippets |
+| `Right` | Expand folder / enter snippets |
+| `Left` | Collapse folder / go to parent |
+| `Return` | Paste selected snippet |
+| `1`-`30` (type rapidly) | Quick select snippet by number |
+| `Escape` | Close panel |
+
+### Snippet Editor
+
+| Shortcut | Action |
+|---|---|
+| `Up/Down` | Navigate sidebar (hold to repeat) |
+| `Right` | Expand folder / enter snippets |
+| `Left` | Collapse folder / go to parent |
+| `Cmd+S` | Save current snippet |
+| `Escape` | Close editor |
+
+---
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions.
+
+```bash
+bundle install --path=vendor/bundle
+bundle exec pod install
+open Clipy.xcworkspace
+```
+
+### Debugging
+
+```bash
+log stream --process Clipy --predicate 'subsystem == "com.clipy-app.Clipy"' --level debug
+```
+
+### Project Structure
+
+```
+Clipy/Sources/
+├── Models/          # Realm models (CPYClip, CPYFolder, CPYSnippet)
+├── Services/        # ClipService, PasteService, HotKeyService, VaultAuthService
+├── Views/
+│   ├── SearchPanel/       # Search UI, syntax highlighter, content detection
+│   └── SnippetPicker/     # Snippet browser panel
+├── Snippets/        # Snippet editor
+├── Preferences/     # Settings window
+├── Extensions/      # Type helpers, NSImage resize
+└── Managers/        # Status bar menu
+```
+
+---
+
+## Roadmap
+
+See [Issues](https://github.com/jeanluciradukunda/Clipy/issues) for the full feature roadmap. Look for `good first issue` labels if you'd like to contribute.
+
+---
+
+## Attribution
+
+Clipy is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the [Clipy Project](https://github.com/Clipy). Special thanks to [@naotaka](https://github.com/naotaka) for publishing the original [ClipMenu](https://github.com/naotaka/ClipMenu) as open source.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+Copyright (c) 2015-2018 Clipy Project
+Copyright (c) 2024-2026 Jean Luc Iradukunda
