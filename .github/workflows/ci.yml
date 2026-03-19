@@ -32,7 +32,7 @@ jobs:
           xcodebuild \
             -workspace Clipy.xcworkspace \
             -scheme Clipy \
-            -configuration Debug \
+            -configuration Release \
             -destination 'platform=macOS' \
             ONLY_ACTIVE_ARCH=YES \
             CODE_SIGN_IDENTITY="-" \
