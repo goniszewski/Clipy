@@ -30,8 +30,8 @@ jobs:
       - name: Build
         run: |
           xcodebuild \
-            -workspace Clipy.xcworkspace \
-            -scheme Clipy \
+            -project Clipy.xcodeproj \
+            -target Clipy \
             -configuration Release \
             -destination 'platform=macOS' \
             ONLY_ACTIVE_ARCH=YES \
