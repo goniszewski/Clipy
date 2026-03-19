@@ -255,6 +255,7 @@ class SnippetPickerViewModel: ObservableObject {
         for folder in allFolders {
             if let snippet = folder.snippets.first(where: { $0.id == id }) {
                 let processed = SnippetVariableProcessor.process(snippet.content)
+                UsageMetricsService.shared.track(.snippetPasted)
                 AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
                 SnippetPickerWindowController.shared.dismissAndPaste()
                 return

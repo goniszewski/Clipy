@@ -468,6 +468,13 @@ struct DeveloperPreferencesView: View {
                     .padding(8)
                 }
                 .padding(.horizontal, 24)
+
+                // Stats for Nerds
+                GroupBox {
+                    StatsForNerdsView()
+                        .padding(8)
+                }
+                .padding(.horizontal, 24)
                 .padding(.bottom, 12)
             }
         }
@@ -708,6 +715,322 @@ struct MenuPreferencesView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+    }
+}
+
+// MARK: - Stats for Nerds
+struct StatsForNerdsView: View {
+    @ObservedObject private var metrics = UsageMetricsService.shared
+    @State private var showResetConfirm = false
+    @State private var showExportSuccess = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header
+            HStack {
+                Label("Stats for Nerds", systemImage: "chart.bar.xaxis")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Text("\(totalActions) total actions")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+
+            // Radar Chart — Feature Usage
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Feature Radar")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                RadarChartView(data: radarData)
+                    .frame(height: 180)
+            }
+
+            // Hourly Activity
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Activity by Hour")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                HourlyBarChart(data: metrics.hourlyHistogram)
+                    .frame(height: 60)
+            }
+
+            // Daily Activity (last 14 days)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Last 14 Days")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                DailyBarChart(data: recentDailyData)
+                    .frame(height: 60)
+            }
+
+            // Top Features Table
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Event Counters")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                let sorted = metrics.counters.sorted { $0.value > $1.value }
+                ForEach(sorted.prefix(10), id: \.key) { key, value in
+                    HStack {
+                        Text(friendlyName(for: key))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(value)")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
+
+            // Actions
+            HStack(spacing: 8) {
+                Button("Export JSON") { exportMetrics() }
+                    .controlSize(.small)
+                Button("Reset") { showResetConfirm = true }
+                    .controlSize(.small)
+                    .foregroundStyle(.red)
+                if showExportSuccess {
+                    Text("Saved!")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.green)
+                        .transition(.opacity)
+                }
+            }
+            .alert("Reset all metrics?", isPresented: $showResetConfirm) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset", role: .destructive) { metrics.reset() }
+            }
+        }
+    }
+
+    // MARK: - Computed Data
+
+    private var totalActions: Int {
+        metrics.counters.values.reduce(0, +)
+    }
+
+    private var radarData: [(label: String, value: Double)] {
+        let features: [(String, String)] = [
+            ("Paste", "pasteFromPanel"),
+            ("Search", "searchPerformed"),
+            ("OCR", "ocrUsed"),
+            ("Pin", "pinToggled"),
+            ("Share", "shareUsed"),
+            ("Queue", "queueUsed"),
+            ("Vault", "vaultUnlocked"),
+            ("Snippets", "snippetPasted"),
+            ("Plain Text", "pastePlainText"),
+            ("URL Clean", "urlCleaned"),
+            ("JSON", "jsonFormatted"),
+            ("Transform", "textTransformed"),
+        ]
+        let maxVal = max(1.0, Double(metrics.counters.values.max() ?? 1))
+        return features.map { (label: $0.0, value: Double(metrics.counters[$0.1] ?? 0) / maxVal) }
+    }
+
+    private var recentDailyData: [(day: String, count: Int)] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let shortFormatter = DateFormatter()
+        shortFormatter.dateFormat = "dd"
+
+        return (0..<14).reversed().map { daysAgo in
+            let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+            let key = formatter.string(from: date)
+            let label = shortFormatter.string(from: date)
+            return (day: label, count: metrics.dailyActivity[key] ?? 0)
+        }
+    }
+
+    private func friendlyName(for key: String) -> String {
+        switch key {
+        case "clipsCopied": return "Clips copied"
+        case "pasteFromPanel": return "Paste (panel)"
+        case "pasteFromMenu": return "Paste (menu)"
+        case "pasteFromHotkey": return "Paste (hotkey)"
+        case "pastePlainText": return "Plain text"
+        case "searchPerformed": return "Searches"
+        case "ocrUsed": return "OCR"
+        case "pinToggled": return "Pin toggle"
+        case "shareUsed": return "Share"
+        case "queueUsed": return "Queue paste"
+        case "vaultUnlocked": return "Vault unlock"
+        case "snippetPasted": return "Snippets"
+        case "urlCleaned": return "URL clean"
+        case "jsonFormatted": return "JSON format"
+        case "textTransformed": return "Text transform"
+        default: return key
+        }
+    }
+
+    private func exportMetrics() {
+        guard let data = metrics.exportJSON() else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "clipy-metrics-\(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)).json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? data.write(to: url)
+        withAnimation { showExportSuccess = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation { showExportSuccess = false }
+        }
+    }
+}
+
+// MARK: - Radar Chart
+struct RadarChartView: View {
+    let data: [(label: String, value: Double)]
+
+    var body: some View {
+        GeometryReader { geo in
+            let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            let radius = min(geo.size.width, geo.size.height) / 2 - 30
+            let count = data.count
+            let angleStep = (2 * .pi) / Double(count)
+
+            ZStack {
+                // Grid rings
+                ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { ring in
+                    Path { path in
+                        for i in 0..<count {
+                            let angle = angleStep * Double(i) - .pi / 2
+                            let point = CGPoint(
+                                x: center.x + cos(angle) * radius * ring,
+                                y: center.y + sin(angle) * radius * ring
+                            )
+                            if i == 0 { path.move(to: point) }
+                            else { path.addLine(to: point) }
+                        }
+                        path.closeSubpath()
+                    }
+                    .stroke(.white.opacity(0.06), lineWidth: 0.5)
+                }
+
+                // Axis lines
+                ForEach(0..<count, id: \.self) { i in
+                    let angle = angleStep * Double(i) - .pi / 2
+                    Path { path in
+                        path.move(to: center)
+                        path.addLine(to: CGPoint(
+                            x: center.x + cos(angle) * radius,
+                            y: center.y + sin(angle) * radius
+                        ))
+                    }
+                    .stroke(.white.opacity(0.04), lineWidth: 0.5)
+                }
+
+                // Data polygon
+                Path { path in
+                    for i in 0..<count {
+                        let angle = angleStep * Double(i) - .pi / 2
+                        let val = max(0.02, data[i].value)
+                        let point = CGPoint(
+                            x: center.x + cos(angle) * radius * val,
+                            y: center.y + sin(angle) * radius * val
+                        )
+                        if i == 0 { path.move(to: point) }
+                        else { path.addLine(to: point) }
+                    }
+                    path.closeSubpath()
+                }
+                .fill(.orange.opacity(0.15))
+
+                Path { path in
+                    for i in 0..<count {
+                        let angle = angleStep * Double(i) - .pi / 2
+                        let val = max(0.02, data[i].value)
+                        let point = CGPoint(
+                            x: center.x + cos(angle) * radius * val,
+                            y: center.y + sin(angle) * radius * val
+                        )
+                        if i == 0 { path.move(to: point) }
+                        else { path.addLine(to: point) }
+                    }
+                    path.closeSubpath()
+                }
+                .stroke(.orange, lineWidth: 1.5)
+
+                // Data points
+                ForEach(0..<count, id: \.self) { i in
+                    let angle = angleStep * Double(i) - .pi / 2
+                    let val = max(0.02, data[i].value)
+                    Circle()
+                        .fill(.orange)
+                        .frame(width: 4, height: 4)
+                        .position(
+                            x: center.x + cos(angle) * radius * val,
+                            y: center.y + sin(angle) * radius * val
+                        )
+                }
+
+                // Labels
+                ForEach(0..<count, id: \.self) { i in
+                    let angle = angleStep * Double(i) - .pi / 2
+                    let labelRadius = radius + 18
+                    Text(data[i].label)
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .position(
+                            x: center.x + cos(angle) * labelRadius,
+                            y: center.y + sin(angle) * labelRadius
+                        )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Hourly Bar Chart
+struct HourlyBarChart: View {
+    let data: [Int]
+
+    var body: some View {
+        let maxVal = max(1, data.max() ?? 1)
+        GeometryReader { geo in
+            HStack(alignment: .bottom, spacing: 1) {
+                ForEach(0..<24, id: \.self) { hour in
+                    VStack(spacing: 2) {
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(barColor(for: hour))
+                            .frame(height: max(1, geo.size.height * CGFloat(data[hour]) / CGFloat(maxVal)))
+                        if hour % 6 == 0 {
+                            Text("\(hour)")
+                                .font(.system(size: 7, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func barColor(for hour: Int) -> SwiftUI.Color {
+        if hour >= 9 && hour < 18 { return .orange.opacity(0.7) }
+        if hour >= 6 && hour < 22 { return .orange.opacity(0.4) }
+        return .orange.opacity(0.2)
+    }
+}
+
+// MARK: - Daily Bar Chart
+struct DailyBarChart: View {
+    let data: [(day: String, count: Int)]
+
+    var body: some View {
+        let maxVal = max(1, data.map(\.count).max() ?? 1)
+        GeometryReader { geo in
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(Array(data.enumerated()), id: \.offset) { _, item in
+                    VStack(spacing: 2) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(.blue.opacity(item.count >= 1 ? 0.6 : 0.1))
+                            .frame(height: max(2, geo.size.height * CGFloat(item.count) / CGFloat(maxVal)))
+                        Text(item.day)
+                            .font(.system(size: 7, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
     }
 }
 

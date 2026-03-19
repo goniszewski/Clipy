@@ -53,6 +53,7 @@ final class VaultAuthService {
         context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { [weak self] success, authError in
             DispatchQueue.main.async {
                 if success {
+                    UsageMetricsService.shared.track(.vaultUnlocked)
                     self?.unlockedFolderIDs.insert(folderID)
                     logger.info("Vault folder unlocked: \(folderID)")
                     completion(true)

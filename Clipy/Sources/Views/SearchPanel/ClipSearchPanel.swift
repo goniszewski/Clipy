@@ -269,8 +269,11 @@ class ClipSearchViewModel: ObservableObject {
         if filter != .all {
             filtered = filtered.filter { filter.matches($0) }
         }
+        // Track filter usage
+        if filter != .all { UsageMetricsService.shared.trackFilterUsage(filter.rawValue) }
         // Apply search
         if !query.isEmpty {
+            UsageMetricsService.shared.track(.searchPerformed)
             let terms = query.lowercased().split(separator: " ").map(String.init)
             filtered = filtered.filter { clip in
                 terms.allSatisfy { clip.searchableText.contains($0) }
@@ -305,7 +308,7 @@ class ClipSearchViewModel: ObservableObject {
         guard let clip = selectedClip() else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
-        // Copy to pasteboard, then dismiss panel and paste into the previous app
+        UsageMetricsService.shared.track(.pasteFromPanel)
         AppEnvironment.current.pasteService.copyToPasteboard(with: realmClip)
         ClipSearchWindowController.shared.dismissAndPaste()
     }
@@ -313,7 +316,7 @@ class ClipSearchViewModel: ObservableObject {
     func pasteAsPlainText() {
         guard let clip = selectedClip() else { return }
         let text = clip.fullText.isEmpty ? clip.displayTitle : clip.fullText
-        // Put plain text on clipboard using standard .string type
+        UsageMetricsService.shared.track(.pastePlainText)
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
@@ -332,6 +335,7 @@ class ClipSearchViewModel: ObservableObject {
         guard let clip = selectedClip() else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
+        UsageMetricsService.shared.track(.pinToggled)
         AppEnvironment.current.clipService.togglePin(for: realmClip)
         loadClips()
     }
@@ -352,6 +356,7 @@ class ClipSearchViewModel: ObservableObject {
         guard let clip = selectedClip() else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
+        UsageMetricsService.shared.track(.ocrUsed)
 
         // Return cached OCR text if available
         if let cached = realmClip.ocrText {
