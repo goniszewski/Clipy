@@ -66,7 +66,7 @@ A Spotlight-style search panel with split-pane layout: filterable clip list on t
 - **Keyboard-driven**: arrow keys to navigate, `Return` to paste, `Shift+Return` for plain text
 - **Quick select**: type a number to paste instantly — single digits or two digits rapidly (e.g. `1` `5` for item 15, up to 30)
 - **Multi-select**: `Shift+Up/Down` to select multiple clips, `Cmd+Backspace` to bulk delete
-- **Pin clips** to keep them at the top (`Cmd+P`)
+- **Pin clips** to keep them at the top (`Cmd+D`)
 
 ### Syntax Highlighting
 
@@ -167,7 +167,7 @@ Default global hotkeys (configurable in Settings → Shortcuts):
 | `Return` | Paste selected clip |
 | `Shift+Return` | Paste as plain text |
 | `1`-`30` (type rapidly) | Quick select by number |
-| `Cmd+P` | Pin/unpin clip |
+| `Cmd+D` | Pin/unpin clip |
 | `Cmd+Backspace` | Delete selected clip(s) |
 | `Cmd+O` | OCR — extract text from image |
 | `Cmd+S` | Share image via system share sheet |
