@@ -112,6 +112,26 @@ jobs:
           cp -R "${{ runner.temp }}/Clipy.xcarchive/Products/Applications/Clipy.app" \
             "${{ runner.temp }}/export/Clipy.app"
 
+      - name: Re-sign embedded frameworks and app
+        run: |
+          APP_PATH="${{ runner.temp }}/export/Clipy.app"
+
+          # Sign all embedded frameworks with hardened runtime + timestamp
+          find "$APP_PATH/Contents/Frameworks" -name "*.framework" -type d -print0 2>/dev/null | while IFS= read -r -d '' fw; do
+            codesign --force --deep --options runtime --timestamp \
+              --sign "Developer ID Application" "$fw"
+          done
+
+          # Sign any embedded dylibs
+          find "$APP_PATH" -name "*.dylib" -type f -print0 2>/dev/null | while IFS= read -r -d '' lib; do
+            codesign --force --options runtime --timestamp \
+              --sign "Developer ID Application" "$lib"
+          done
+
+          # Re-sign the main app bundle (must be last)
+          codesign --force --deep --options runtime --timestamp \
+            --sign "Developer ID Application" "$APP_PATH"
+
       - name: Verify signature
         run: |
           codesign --verify --deep --strict --verbose=2 "${{ runner.temp }}/export/Clipy.app"
@@ -142,6 +162,12 @@ jobs:
               "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg"
           fi
 
+      - name: Sign DMG
+        run: |
+          codesign --force --timestamp --sign "Developer ID Application" \
+            "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg"
+          echo "✅ DMG signed"
+
       - name: Notarize DMG
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -155,7 +181,30 @@ jobs:
             --apple-id "$APPLE_ID" \
             --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait
+            --output-format json \
+            --wait > notarize_result.json 2>&1 || true
+
+          cat notarize_result.json
+
+          # Parse results from JSON
+          SUBMISSION_ID=$(python3 -c "import json; print(json.load(open('notarize_result.json'))['id'])" 2>/dev/null || echo "")
+          STATUS=$(python3 -c "import json; print(json.load(open('notarize_result.json'))['status'])" 2>/dev/null || echo "unknown")
+
+          if [ "$STATUS" = "Accepted" ]; then
+            echo "✅ Notarization accepted"
+          else
+            echo "❌ Notarization failed (status: $STATUS)"
+            if [ -n "$SUBMISSION_ID" ]; then
+              echo "Fetching rejection log..."
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_ID_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                > developer_log.json 2>&1 || true
+              cat developer_log.json
+            fi
+            exit 1
+          fi
 
           echo "Stapling notarization ticket..."
           xcrun stapler staple "$DMG_PATH"
