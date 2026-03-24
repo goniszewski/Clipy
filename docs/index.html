@@ -541,6 +541,134 @@ h3{font-size:clamp(1.1rem,2vw,1.4rem);font-weight:700}
 }
 
 /* ══════════════════════════════════════
+   3b. USE CASES
+   ══════════════════════════════════════ */
+.use-cases{padding:120px 0}
+.use-cases-heading{text-align:center;margin-bottom:64px}
+.use-cases-heading p{color:var(--text-dim);font-size:1.05rem;max-width:540px;margin:12px auto 0}
+
+.use-case-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:48px}
+.use-case-tab{
+  padding:8px 18px;
+  border-radius:100px;
+  font-size:.85rem;
+  font-weight:500;
+  color:var(--text-dim);
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--border);
+  cursor:pointer;
+  transition:all .25s;
+  user-select:none;
+}
+.use-case-tab:hover{border-color:var(--border-hover);color:var(--text)}
+.use-case-tab.active{background:var(--amber);color:var(--bg);border-color:var(--amber)}
+
+.use-case-cards{display:none}
+.use-case-cards.active{display:block}
+
+.use-case-card{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:48px;
+  align-items:start;
+  padding:40px;
+  border-radius:var(--radius-lg);
+  background:rgba(255,255,255,.02);
+  border:1px solid var(--border);
+  margin-bottom:24px;
+}
+.use-case-card:last-child{margin-bottom:0}
+@media(max-width:768px){.use-case-card{grid-template-columns:1fr;gap:24px;padding:24px}}
+
+.use-case-narrative h3{font-size:1.3rem;margin-bottom:8px}
+.use-case-narrative .uc-subtitle{color:var(--amber);font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px}
+.use-case-narrative p{color:var(--text-dim);font-size:.9rem;line-height:1.7;margin-bottom:12px}
+.use-case-narrative strong{color:var(--text)}
+
+.use-case-steps{list-style:none;padding:0;counter-reset:uc-step}
+.use-case-steps li{
+  counter-increment:uc-step;
+  position:relative;
+  padding:10px 0 10px 36px;
+  font-size:.88rem;
+  color:var(--text-dim);
+  line-height:1.6;
+  border-left:1px solid var(--border);
+  margin-left:12px;
+}
+.use-case-steps li::before{
+  content:counter(uc-step);
+  position:absolute;
+  left:-10px;
+  top:10px;
+  width:20px;
+  height:20px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:50%;
+  font-size:.7rem;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--amber);
+  font-family:var(--font-mono);
+}
+.use-case-steps li:last-child{border-left-color:transparent}
+.use-case-steps code{
+  font-family:var(--font-mono);
+  font-size:.8em;
+  background:rgba(255,255,255,.05);
+  padding:2px 6px;
+  border-radius:4px;
+  color:var(--text);
+}
+
+.uc-terminal{
+  font-family:var(--font-mono);
+  font-size:.78rem;
+  line-height:1.7;
+  background:rgba(0,0,0,.4);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:16px;
+  overflow-x:auto;
+}
+.uc-terminal .uc-comment{color:var(--text-muted)}
+.uc-terminal .uc-key{color:var(--blue)}
+.uc-terminal .uc-val{color:var(--green)}
+.uc-terminal .uc-cmd{color:var(--amber)}
+.uc-terminal .uc-dim{color:var(--text-muted)}
+.uc-terminal .uc-result{color:var(--green);font-weight:500}
+
+.uc-tip{
+  margin-top:16px;
+  padding:12px 16px;
+  background:rgba(245,158,11,.05);
+  border-left:3px solid var(--amber);
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  font-size:.82rem;
+  color:var(--text-dim);
+  line-height:1.6;
+}
+.uc-tip strong{color:var(--amber)}
+
+.uc-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:.72rem;
+  font-weight:600;
+  padding:3px 8px;
+  border-radius:100px;
+  letter-spacing:.03em;
+}
+.uc-badge-green{background:rgba(34,197,94,.1);color:var(--green)}
+.uc-badge-red{background:rgba(239,68,68,.1);color:var(--red)}
+.uc-badge-blue{background:rgba(59,130,246,.1);color:var(--blue)}
+.uc-badge-amber{background:rgba(245,158,11,.1);color:var(--amber)}
+
+/* ══════════════════════════════════════
    4. HOW IT WORKS
    ══════════════════════════════════════ */
 .how-it-works{background:var(--surface)}
@@ -903,6 +1031,7 @@ footer{
     </button>
     <div class="nav-links" id="navLinks">
       <a href="#features">Features</a>
+      <a href="#use-cases">Use Cases</a>
       <a href="#how-it-works">How It Works</a>
       <a href="#templates">Templates</a>
       <a href="#install">Install</a>
@@ -1183,6 +1312,220 @@ footer{
 </section>
 
 <!-- ═══ HOW IT WORKS ═══ -->
+<!-- Use Cases -->
+<section class="use-cases" id="use-cases">
+  <div class="container">
+    <div class="use-cases-heading reveal">
+      <h2>Real workflows,<br>not feature lists.</h2>
+      <p>How developers actually use Clipy every day.</p>
+    </div>
+
+    <div class="use-case-tabs reveal" id="useCaseTabs">
+      <div class="use-case-tab active" data-uc="aws">AWS Secrets</div>
+      <div class="use-case-tab" data-uc="format">Format Transforms</div>
+      <div class="use-case-tab" data-uc="devops">DevOps Workflow</div>
+      <div class="use-case-tab" data-uc="design">Design &amp; Frontend</div>
+      <div class="use-case-tab" data-uc="writing">Writing &amp; Docs</div>
+    </div>
+
+    <!-- AWS Secrets -->
+    <div class="use-case-cards active" id="uc-aws">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Secret Management</div>
+          <h3>Fetch AWS secrets without storing them</h3>
+          <p>You have credentials in AWS Secrets Manager — database passwords, API keys, tokens. Today you open a terminal, run a long <code>aws secretsmanager</code> command, copy the output, paste it. Every few hours when SSO expires.</p>
+          <p>With Clipy: <strong>one hotkey, Touch ID, done.</strong> The secret is pasted and auto-cleared. It never touches your clipboard history or disk.</p>
+          <div class="uc-tip"><strong>Tip:</strong> Place AWS snippets in a Vault folder. You'll need Touch ID to access them, and they're hidden from search and export when locked.</div>
+        </div>
+        <div>
+          <h4 style="font-size:.9rem;margin-bottom:16px;color:var(--text-dim)">Setup (one time)</h4>
+          <ol class="use-case-steps">
+            <li>Open snippet editor &rarr; create an <strong>"AWS"</strong> folder, mark as Vault</li>
+            <li>Click <strong>Templates</strong> &rarr; pick <strong>"AWS Secret Fetch"</strong></li>
+            <li>Fill in the form: <code>Profile: production</code>, <code>Secret: prod/db/password</code></li>
+            <li>Click <strong>Create Snippet</strong> &mdash; done. Repeat for each secret.</li>
+          </ol>
+          <h4 style="font-size:.9rem;margin:24px 0 16px;color:var(--text-dim)">Daily use</h4>
+          <ol class="use-case-steps">
+            <li>Hit <code>&#8984;&#8679;B</code> to open the snippet picker</li>
+            <li>Touch ID to unlock the AWS vault</li>
+            <li>Select "Prod DB Password" &mdash; script runs, SSO auto-refreshes if needed</li>
+            <li>Secret is pasted into your app. <span class="uc-badge uc-badge-green">Ephemeral</span> Never saved to history.</li>
+            <li>30 seconds later, pasteboard auto-clears. <span class="uc-badge uc-badge-red">Auto-clear</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Available Templates</div>
+          <h3>Four AWS templates, ready to configure</h3>
+          <p>Each template shows a form with labeled fields &mdash; no raw script editing. Fill in your profile name and resource, see a live preview, create the snippet.</p>
+        </div>
+        <div class="uc-terminal">
+          <div style="margin-bottom:12px"><span class="uc-cmd">AWS SSO Credentials</span> <span class="uc-dim">&mdash; pastes export statements</span></div>
+          <div style="margin-bottom:12px"><span class="uc-cmd">AWS Secret Fetch</span> <span class="uc-dim">&mdash; raw secret value from Secrets Manager</span></div>
+          <div style="margin-bottom:12px"><span class="uc-cmd">AWS Secret Field</span> <span class="uc-dim">&mdash; extracts a JSON key (e.g., "password")</span></div>
+          <div><span class="uc-cmd">AWS SSM Parameter</span> <span class="uc-dim">&mdash; Parameter Store value with decryption</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Format Transforms -->
+    <div class="use-case-cards" id="uc-format">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Format Conversion</div>
+          <h3>Copy messy, paste clean</h3>
+          <p>You're debugging and copy a minified JSON response from the browser. You need to paste it formatted into Slack, a doc, or a PR description.</p>
+          <p>With Clipy: <strong>copy the JSON, trigger the "JSON Pretty Print" snippet, paste formatted output.</strong> The original stays in history, the formatted version is ephemeral (no duplicates).</p>
+          <div class="uc-tip"><strong>Tip:</strong> The transform templates work on whatever is currently on your clipboard. Copy first, then trigger the snippet.</div>
+        </div>
+        <div>
+          <div class="uc-terminal">
+            <div class="uc-comment"># You copied this:</div>
+            <div style="margin-bottom:12px">{"name":"prod","host":"db.internal","port":5432,"ssl":true}</div>
+            <div class="uc-comment"># Trigger "JSON Pretty Print" snippet, paste this:</div>
+            <div>{</div>
+            <div>&nbsp;&nbsp;<span class="uc-key">"name"</span>: <span class="uc-val">"prod"</span>,</div>
+            <div>&nbsp;&nbsp;<span class="uc-key">"host"</span>: <span class="uc-val">"db.internal"</span>,</div>
+            <div>&nbsp;&nbsp;<span class="uc-key">"port"</span>: <span class="uc-val">5432</span>,</div>
+            <div>&nbsp;&nbsp;<span class="uc-key">"ssl"</span>: <span class="uc-val">true</span></div>
+            <div>}</div>
+          </div>
+          <h4 style="font-size:.9rem;margin:24px 0 12px;color:var(--text-dim)">More transforms</h4>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="uc-badge uc-badge-blue">Base64 Encode</span>
+            <span class="uc-badge uc-badge-blue">Base64 Decode</span>
+            <span class="uc-badge uc-badge-blue">URL Encode</span>
+            <span class="uc-badge uc-badge-amber">JWT Decode</span>
+            <span class="uc-badge uc-badge-amber">Epoch &rarr; Date</span>
+            <span class="uc-badge uc-badge-green">JSON Minify</span>
+            <span class="uc-badge uc-badge-green">Markdown &rarr; HTML</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DevOps Workflow -->
+    <div class="use-case-cards" id="uc-devops">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">DevOps &amp; Infrastructure</div>
+          <h3>Collect mode for multi-source configs</h3>
+          <p>You're building a .env file and need values from three different places &mdash; a Slack message, a config file, and a dashboard. Normally you'd copy-paste-switch-copy-paste-switch endlessly.</p>
+          <p>With Clipy: <strong>start Collect Mode, copy all three values, then paste them all at once</strong> &mdash; merged in order.</p>
+        </div>
+        <div>
+          <ol class="use-case-steps">
+            <li>Start Collect Mode from the menu bar (or hotkey)</li>
+            <li>Copy <code>DATABASE_URL=postgres://...</code> from Slack</li>
+            <li>Copy <code>REDIS_HOST=cache.internal</code> from the config dashboard</li>
+            <li>Copy <code>API_KEY=sk-live-...</code> from the secrets vault</li>
+            <li>Click <strong>Paste Collected</strong> &mdash; all three pasted together, in order</li>
+          </ol>
+          <div class="uc-tip"><strong>Tip:</strong> Collect mode shows a floating indicator so you always know when it's active. The count updates in real time.</div>
+        </div>
+      </div>
+
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Quick References</div>
+          <h3>Pin the commands you paste daily</h3>
+          <p>That SSH command, the kubectl context switch, the Docker compose path &mdash; you paste them ten times a day but they keep getting pushed down your history.</p>
+          <p><strong>Pin them.</strong> Pinned clips stay at the top of your history forever, survive re-copies and history limits.</p>
+        </div>
+        <div class="uc-terminal">
+          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">ssh deploy@prod.internal -i ~/.ssh/prod.pem</span></div>
+          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">kubectl config use-context production</span></div>
+          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">docker compose -f infra/docker-compose.yml up -d</span></div>
+          <div style="margin-top:8px;color:var(--text-muted);font-size:.75rem">&#8984;D to pin/unpin from the search panel</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Design & Frontend -->
+    <div class="use-case-cards" id="uc-design">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Design Workflow</div>
+          <h3>Colors, images, and OCR from screenshots</h3>
+          <p>You copy a hex color from Figma &mdash; Clipy detects it and shows a live swatch in your history. You screenshot an error dialog &mdash; Clipy runs OCR and the text becomes searchable.</p>
+          <p><strong>Everything you copy is findable.</strong> Text, images, colors, URLs, files &mdash; all searchable from one panel.</p>
+        </div>
+        <div>
+          <ol class="use-case-steps">
+            <li>Copy <code>#3b82f6</code> from Figma &rarr; color swatch appears in history</li>
+            <li>Screenshot an error message &rarr; OCR extracts the text automatically</li>
+            <li>Search "connection refused" &rarr; finds the screenshot via OCR text</li>
+            <li>Copy an image &rarr; thumbnail in history, full quality on paste</li>
+          </ol>
+          <div class="uc-tip"><strong>Tip:</strong> OCR results are cached in Realm. First extraction takes a moment, but subsequent views are instant.</div>
+        </div>
+      </div>
+
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Snippet Variables</div>
+          <h3>Dynamic templates for repetitive text</h3>
+          <p>Bug report templates, meeting notes, code comments with timestamps &mdash; create snippets with <code>%DATE%</code>, <code>%TIME%</code>, <code>%CLIPBOARD%</code> and they're filled in automatically on paste.</p>
+        </div>
+        <div class="uc-terminal">
+          <div class="uc-comment">// Snippet content:</div>
+          <div>Bug found on <span class="uc-cmd">%DATE%</span> at <span class="uc-cmd">%TIME%</span></div>
+          <div>Steps to reproduce: <span class="uc-cmd">%CLIPBOARD%</span></div>
+          <div>ID: <span class="uc-cmd">%UUID%</span></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="uc-comment">// Pasted result:</div>
+          <div>Bug found on <span class="uc-val">2026-03-25</span> at <span class="uc-val">14:32:07</span></div>
+          <div>Steps to reproduce: <span class="uc-val">Click submit with empty form</span></div>
+          <div>ID: <span class="uc-val">a1b2c3d4-e5f6-...</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Writing & Docs -->
+    <div class="use-case-cards" id="uc-writing">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Writing &amp; Documentation</div>
+          <h3>Rich text snippets for repeated content</h3>
+          <p>Email signatures, standard responses, code review templates, PR descriptions &mdash; create them as snippets and paste them anywhere with a hotkey.</p>
+          <p>Clipy preserves <strong>rich text formatting</strong> (RTF). What you paste looks exactly how you created it &mdash; bold, links, lists, all intact.</p>
+        </div>
+        <div>
+          <ol class="use-case-steps">
+            <li>Create a snippet folder "Responses" with your standard replies</li>
+            <li>Hit <code>&#8984;&#8679;B</code> &rarr; search "review" &rarr; paste your code review template</li>
+            <li>Variables like <code>%DATE%</code> and <code>%CLIPBOARD%</code> are auto-filled</li>
+            <li>Rich text, plain text, or script output &mdash; the right format for each snippet</li>
+          </ol>
+          <div class="uc-tip"><strong>Tip:</strong> Use the two-digit quick select in the snippet picker. Type <code>1</code> then <code>4</code> to instantly paste snippet #14. No arrow keys needed.</div>
+        </div>
+      </div>
+
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Excluded Apps</div>
+          <h3>Automatically skip sensitive apps</h3>
+          <p>Password managers, banking apps, private browsing &mdash; configure apps that Clipy should never capture from. Copies from excluded apps are silently ignored.</p>
+        </div>
+        <div class="uc-terminal">
+          <div class="uc-comment"># Excluded apps (configured in Preferences):</div>
+          <div><span class="uc-dim">&#x2717;</span> 1Password.app</div>
+          <div><span class="uc-dim">&#x2717;</span> Bitwarden.app</div>
+          <div><span class="uc-dim">&#x2717;</span> Safari Private Browsing</div>
+          <div><span class="uc-dim">&#x2717;</span> Banking apps</div>
+          <div style="margin-top:12px;color:var(--text-muted);font-size:.75rem">Copies from these apps are never stored in Clipy history.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <section class="how-it-works" id="how-it-works">
   <div class="container">
     <div class="how-heading reveal">
@@ -1580,6 +1923,25 @@ footer{
     });
   }, {threshold:0.5});
   ephemeralObs.observe(ephemeralCell);
+
+  // Use case tab switching
+  const tabs = document.querySelectorAll('.use-case-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const uc = tab.dataset.uc;
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.use-case-cards').forEach(c => c.classList.remove('active'));
+      const target = document.getElementById('uc-' + uc);
+      if (target) {
+        target.classList.add('active');
+        // Re-trigger reveal for newly visible cards
+        target.querySelectorAll('.reveal:not(.visible)').forEach(el => {
+          el.classList.add('visible');
+        });
+      }
+    });
+  });
 
 })();
 </script>
