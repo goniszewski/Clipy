@@ -55,10 +55,19 @@ final class MenuManager: NSObject {
         bind()
     }
 
+    @MainActor
+    func refresh() {
+        createClipMenu()
+    }
+
+    var appDelegate: AppDelegate? {
+        NSApp.delegate as? AppDelegate
+    }
 }
 
 // MARK: - Popup Menu
 extension MenuManager {
+    @MainActor
     func popUpMenu(_ type: MenuType) {
         let menu: NSMenu?
         switch type {
@@ -72,7 +81,19 @@ extension MenuManager {
         menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
+    @MainActor
     func popUpSnippetFolder(_ folder: CPYFolder) {
+        if folder.isVault && !isVaultUnlocked(folder.identifier) {
+            authenticateVault(folderID: folder.identifier, title: folder.title) { [weak self] success in
+                guard success else { return }
+                Task { @MainActor [weak self] in
+                    self?.refresh()
+                    self?.popUpSnippetFolder(folder)
+                }
+            }
+            return
+        }
+
         let folderMenu = NSMenu(title: folder.title)
         let labelItem = NSMenuItem(title: folder.title, action: nil)
         labelItem.isEnabled = false
@@ -85,8 +106,56 @@ extension MenuManager {
                 let subMenuItem = makeSnippetMenuItem(snippet, listNumber: index)
                 folderMenu.addItem(subMenuItem)
                 index += 1
-            }
+        }
         folderMenu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    @MainActor
+    @objc func selectClipMenuItem(_ sender: NSMenuItem) {
+        guard let primaryKey = sender.representedObject as? String else {
+            NSSound.beep()
+            return
+        }
+        guard let realm = Realm.safeInstance(),
+              let clip = realm.object(ofType: CPYClip.self, forPrimaryKey: primaryKey) else {
+            NSSound.beep()
+            return
+        }
+
+        AppEnvironment.current.pasteService.paste(with: clip)
+    }
+
+    @MainActor
+    @objc func selectSnippetMenuItem(_ sender: NSMenuItem) {
+        guard let primaryKey = sender.representedObject as? String else {
+            NSSound.beep()
+            return
+        }
+        guard let realm = Realm.safeInstance(),
+              let snippet = realm.object(ofType: CPYSnippet.self, forPrimaryKey: primaryKey) else {
+            NSSound.beep()
+            return
+        }
+
+        let processed = SnippetVariableProcessor.process(snippet.content)
+        AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
+        AppEnvironment.current.pasteService.paste()
+    }
+}
+
+// MARK: - Vault Helpers
+@MainActor
+private extension MenuManager {
+    func isVaultUnlocked(_ folderID: String) -> Bool {
+        VaultAuthService.shared.isUnlocked(folderID)
+    }
+
+    func authenticateVault(folderID: String, title: String, completion: @escaping (Bool) -> Void) {
+        VaultAuthService.shared.authenticate(folderID: folderID, reason: "Unlock \"\(title)\" vault") { success in
+            DispatchQueue.main.async {
+                completion(success)
+            }
+        }
     }
 }
 
@@ -98,13 +167,13 @@ private extension MenuManager {
         // Realm Notifications
         clipToken = realm.objects(CPYClip.self)
                         .observe { [weak self] _ in
-                            DispatchQueue.main.async { [weak self] in
+                            Task { @MainActor [weak self] in
                                 self?.createClipMenu()
                             }
                         }
         snippetToken = realm.objects(CPYFolder.self)
                         .observe { [weak self] _ in
-                            DispatchQueue.main.async { [weak self] in
+                            Task { @MainActor [weak self] in
                                 self?.createClipMenu()
                             }
                         }
@@ -125,7 +194,9 @@ private extension MenuManager {
         defaults.publisher(for: \.clipyReorderClips)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
 
@@ -134,7 +205,9 @@ private extension MenuManager {
             .publisher(for: Notification.Name(rawValue: Constants.Notification.closeSnippetEditor))
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
 
@@ -164,7 +237,9 @@ private extension MenuManager {
         Publishers.MergeMany(publishers)
             .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
     }
@@ -172,30 +247,22 @@ private extension MenuManager {
 
 // MARK: - Menus
 private extension MenuManager {
+    @MainActor
      func createClipMenu() {
         clipMenu = NSMenu(title: Constants.Application.name)
         historyMenu = NSMenu(title: Constants.Menu.history)
         snippetMenu = NSMenu(title: Constants.Menu.snippet)
 
-        // Current clipboard indicator
-        addCurrentClipboardItem(clipMenu!)
+        addHistoryItems(clipMenu!)
+        addHistoryItems(historyMenu!)
+        addSnippetItems(clipMenu!, separateMenu: true)
+        addSnippetItems(snippetMenu!, separateMenu: false)
 
-        // Recent clips (just a few for quick access)
-        addRecentClips(clipMenu!, maxItems: 5)
-
-        // Search History — the main way to browse
-        clipMenu?.addItem(NSMenuItem.separator())
-        let searchItem = NSMenuItem(title: "Search History\u{2026}", action: #selector(AppDelegate.showSearchPanel), keyEquivalent: "")
-        if let searchImage = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Search") {
-            searchImage.isTemplate = true
-            searchItem.image = searchImage
-        }
-        clipMenu?.addItem(searchItem)
-
-        // Collect Mode
         let isCollecting = ClipboardQueueService.shared.isCollecting
+        clipMenu?.addItem(NSMenuItem.separator())
         if isCollecting {
             let stopItem = NSMenuItem(title: "Stop Collecting (\(ClipboardQueueService.shared.itemCount))", action: #selector(AppDelegate.stopCollectMode), keyEquivalent: "")
+            stopItem.target = appDelegate
             if let stopImage = NSImage(systemSymbolName: "stop.circle", accessibilityDescription: "Stop") {
                 stopImage.isTemplate = true
                 stopItem.image = stopImage
@@ -204,6 +271,7 @@ private extension MenuManager {
 
             if ClipboardQueueService.shared.hasItems {
                 let pasteAllItem = NSMenuItem(title: "Paste All (\(ClipboardQueueService.shared.itemCount) items)", action: #selector(AppDelegate.pasteCollectedItems), keyEquivalent: "")
+                pasteAllItem.target = appDelegate
                 if let pasteImage = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Paste All") {
                     pasteImage.isTemplate = true
                     pasteAllItem.image = pasteImage
@@ -212,6 +280,7 @@ private extension MenuManager {
             }
         } else {
             let startItem = NSMenuItem(title: "Start Collect Mode", action: #selector(AppDelegate.startCollectMode), keyEquivalent: "")
+            startItem.target = appDelegate
             if let startImage = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: "Collect") {
                 startImage.isTemplate = true
                 startItem.image = startImage
@@ -219,15 +288,10 @@ private extension MenuManager {
             clipMenu?.addItem(startItem)
         }
 
-        // Only add snippet items to the main menu when using classic picker
-        let useModernPicker = AppEnvironment.current.defaults.bool(forKey: Constants.Snippets.useModernPicker)
-        if !useModernPicker {
-            addSnippetItems(clipMenu!, separateMenu: true)
-        }
-        addSnippetItems(snippetMenu!, separateMenu: false)
-
         if AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.addClearHistoryMenuItem) {
+            clipMenu?.addItem(NSMenuItem.separator())
             let clearItem = NSMenuItem(title: L10n.clearHistory, action: #selector(AppDelegate.clearAllHistory), keyEquivalent: "")
+            clearItem.target = appDelegate
             if let clearImage = NSImage(systemSymbolName: "trash", accessibilityDescription: "Clear") {
                 clearImage.isTemplate = true
                 clearItem.image = clearImage
@@ -236,6 +300,7 @@ private extension MenuManager {
         }
 
         let snippetItem = NSMenuItem(title: L10n.editSnippets, action: #selector(AppDelegate.showSnippetEditorWindow), keyEquivalent: "")
+        snippetItem.target = appDelegate
         if let editImage = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Snippets") {
             editImage.isTemplate = true
             snippetItem.image = editImage
@@ -243,6 +308,7 @@ private extension MenuManager {
         clipMenu?.addItem(snippetItem)
 
         let prefItem = NSMenuItem(title: L10n.preferences, action: #selector(AppDelegate.showPreferenceWindow), keyEquivalent: ",")
+        prefItem.target = appDelegate
         if let gearImage = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Preferences") {
             gearImage.isTemplate = true
             prefItem.image = gearImage
@@ -250,7 +316,9 @@ private extension MenuManager {
         clipMenu?.addItem(prefItem)
 
         clipMenu?.addItem(NSMenuItem.separator())
-        clipMenu?.addItem(NSMenuItem(title: L10n.quitClipy, action: #selector(AppDelegate.terminate), keyEquivalent: "q"))
+        let quitItem = NSMenuItem(title: "Quit \(Constants.Application.name)", action: #selector(AppDelegate.terminate), keyEquivalent: "q")
+        quitItem.target = NSApp.delegate
+        clipMenu?.addItem(quitItem)
 
         statusItem?.menu = clipMenu
     }
@@ -309,70 +377,10 @@ private extension MenuManager {
 
         return titleString as String
     }
-
-    func addCurrentClipboardItem(_ menu: NSMenu) {
-        let pasteboard = NSPasteboard.general
-        var currentTitle = "(Empty clipboard)"
-        if let string = pasteboard.string(forType: .string) {
-            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-            currentTitle = trimTitle(trimmed)
-            if currentTitle.isEmpty { currentTitle = "(Empty clipboard)" }
-        } else if pasteboard.data(forType: .tiff) != nil {
-            currentTitle = "(Image)"
-        } else if pasteboard.data(forType: .pdf) != nil {
-            currentTitle = "(PDF)"
-        }
-
-        let headerItem = NSMenuItem(title: "Clipboard: \(currentTitle)", action: nil)
-        headerItem.isEnabled = false
-        if let clipboardImage = NSImage(systemSymbolName: "clipboard", accessibilityDescription: "Current") {
-            clipboardImage.isTemplate = true
-            headerItem.image = clipboardImage
-        }
-        menu.addItem(headerItem)
-
-        // Paste as Plain Text action
-        let plainTextItem = NSMenuItem(title: "Paste as Plain Text", action: #selector(AppDelegate.pasteAsPlainText), keyEquivalent: "")
-        if let textImage = NSImage(systemSymbolName: "textformat", accessibilityDescription: "Plain Text") {
-            textImage.isTemplate = true
-            plainTextItem.image = textImage
-        }
-        menu.addItem(plainTextItem)
-        menu.addItem(NSMenuItem.separator())
-    }
 }
 
 // MARK: - Clips
 private extension MenuManager {
-    func addRecentClips(_ menu: NSMenu, maxItems: Int) {
-        guard let realm = realm else { return }
-
-        let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
-        let clipResults = realm.objects(CPYClip.self).sorted(byKeyPath: #keyPath(CPYClip.updateTime), ascending: ascending)
-
-        guard !clipResults.isEmpty else { return }
-
-        let labelItem = NSMenuItem(title: L10n.history, action: nil)
-        labelItem.isEnabled = false
-        if let historyImage = NSImage(systemSymbolName: "clock.arrow.trianglehead.counterclockwise.rotate.90", accessibilityDescription: "History") {
-            historyImage.isTemplate = true
-            labelItem.image = historyImage
-        }
-        menu.addItem(labelItem)
-
-        let firstIndex = firstIndexOfMenuItems()
-        var listNumber = firstIndex
-        var count = 0
-
-        for clip in clipResults {
-            let menuItem = makeClipMenuItem(clip, index: count, listNumber: listNumber)
-            menu.addItem(menuItem)
-            listNumber = incrementListNumber(listNumber, max: maxItems, start: firstIndex)
-            count += 1
-            if count >= maxItems { break }
-        }
-    }
-
     func addHistoryItems(_ menu: NSMenu) {
         guard let realm = realm else { return }
         let placeInLine = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInline)
@@ -460,7 +468,8 @@ private extension MenuManager {
             titleWithMark = "\u{1F4CC} " + titleWithMark
         }
 
-        let menuItem = NSMenuItem(title: titleWithMark, action: #selector(AppDelegate.selectClipMenuItem(_:)), keyEquivalent: keyEquivalent)
+        let menuItem = NSMenuItem(title: titleWithMark, action: #selector(MenuManager.selectClipMenuItem(_:)), keyEquivalent: keyEquivalent)
+        menuItem.target = self
         menuItem.representedObject = clip.dataHash
 
         if isShowToolTip {
@@ -512,6 +521,7 @@ private extension MenuManager {
 
 // MARK: - Snippets
 private extension MenuManager {
+    @MainActor
     func addSnippetItems(_ menu: NSMenu, separateMenu: Bool) {
         guard let realm = realm else { return }
         let folderResults = realm.objects(CPYFolder.self).sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
@@ -524,28 +534,37 @@ private extension MenuManager {
         labelItem.isEnabled = false
         menu.addItem(labelItem)
 
-        var subMenuIndex = menu.numberOfItems - 1
         let firstIndex = firstIndexOfMenuItems()
 
         folderResults
             .filter { $0.enable }
             .forEach { folder in
                 let folderTitle = folder.title
-                let subMenuItem = makeSubmenuItem(folderTitle)
-                menu.addItem(subMenuItem)
-                subMenuIndex += 1
-
-                var i = firstIndex
-                folder.snippets
-                    .sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true)
-                    .filter { $0.enable }
-                    .forEach { snippet in
-                        let subMenuItem = makeSnippetMenuItem(snippet, listNumber: i)
-                        if let subMenu = menu.item(at: subMenuIndex)?.submenu {
-                            subMenu.addItem(subMenuItem)
-                            i += 1
-                        }
+                if folder.isVault && !isVaultUnlocked(folder.identifier) {
+                    let vaultItem = NSMenuItem(title: folderTitle, action: #selector(AppDelegate.unlockVaultFolder(_:)), keyEquivalent: "")
+                    vaultItem.target = appDelegate
+                    vaultItem.representedObject = folder.identifier
+                    if let lockImage = NSImage(systemSymbolName: "lock.fill", accessibilityDescription: "Locked Vault") {
+                        lockImage.isTemplate = true
+                        vaultItem.image = lockImage
                     }
+                    menu.addItem(vaultItem)
+                } else {
+                    let folderItem = makeSubmenuItem(folderTitle)
+                    menu.addItem(folderItem)
+
+                    var i = firstIndex
+                    folder.snippets
+                        .sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true)
+                        .filter { $0.enable }
+                        .forEach { snippet in
+                            let subMenuItem = makeSnippetMenuItem(snippet, listNumber: i)
+                            if let subMenu = folderItem.submenu {
+                                subMenu.addItem(subMenuItem)
+                                i += 1
+                            }
+                        }
+                }
             }
     }
 
@@ -556,7 +575,8 @@ private extension MenuManager {
         let title = trimTitle(snippet.title)
         let titleWithMark = menuItemTitle(title, listNumber: listNumber, isMarkWithNumber: isMarkWithNumber)
 
-        let menuItem = NSMenuItem(title: titleWithMark, action: #selector(AppDelegate.selectSnippetMenuItem(_:)), keyEquivalent: "")
+        let menuItem = NSMenuItem(title: titleWithMark, action: #selector(MenuManager.selectSnippetMenuItem(_:)), keyEquivalent: "")
+        menuItem.target = self
         menuItem.representedObject = snippet.identifier
         menuItem.toolTip = snippet.content
         menuItem.image = (isShowIcon) ? snippetIcon : nil
@@ -592,7 +612,7 @@ private extension MenuManager {
             devLabel.sizeToFit()
             devLabel.frame.origin = CGPoint(x: 20, y: 2)
             button.addSubview(devLabel)
-            button.toolTip = "Clipy Dev \(Bundle.main.appVersion ?? "") (Debug Build)"
+            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion) (Debug Build)"
         }
         #else
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -607,7 +627,7 @@ private extension MenuManager {
             }
             image?.isTemplate = true
             button.image = image
-            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion ?? "")"
+            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion)"
         }
         #endif
         statusItem?.menu = clipMenu

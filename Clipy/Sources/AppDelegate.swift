@@ -10,15 +10,44 @@
 //
 
 import Cocoa
-import Sparkle
 import Combine
 import RealmSwift
 import TipKit
 import Magnet
 import ServiceManagement
+import Sparkle
 import os.log
 
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "App")
+
+final class SparkleUpdaterDriver: NSObject, ObservableObject {
+    static let shared = SparkleUpdaterDriver()
+
+    @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var automaticallyChecksForUpdates = true
+    @Published private(set) var automaticallyDownloadsUpdates = false
+    @Published private(set) var feedURL = Constants.Application.appcastURL
+
+    private let updaterController: SPUStandardUpdaterController
+
+    private override init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        super.init()
+        refreshState()
+    }
+
+    func refreshState() {
+        canCheckForUpdates = updaterController.updater.canCheckForUpdates
+        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
+        automaticallyDownloadsUpdates = updaterController.updater.automaticallyDownloadsUpdates
+        feedURL = updaterController.updater.feedURL ?? Constants.Application.appcastURL
+    }
+
+    func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
+        refreshState()
+    }
+}
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSMenuItemValidation {
@@ -26,6 +55,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
     // MARK: - Properties
     private var cancellables = Set<AnyCancellable>()
     private var screenshotTask: Task<Void, Never>?
+    private let updaterDriver = SparkleUpdaterDriver.shared
 
     // MARK: - Init
     override func awakeFromNib() {
@@ -62,6 +92,45 @@ class AppDelegate: NSObject, NSMenuItemValidation {
         ClipSearchWindowController.shared.show()
     }
 
+    @objc func showAboutPanel(_ sender: Any?) {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+
+        let credits = NSAttributedString(
+            string: Constants.Application.aboutLineage,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12),
+                .paragraphStyle: paragraphStyle
+            ]
+        )
+
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: Constants.Application.name,
+            .credits: credits
+        ])
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @MainActor @objc func unlockVaultFolder(_ sender: NSMenuItem) {
+        guard let folderID = sender.representedObject as? String else {
+            NSSound.beep()
+            return
+        }
+        guard let realm = Realm.safeInstance(),
+              let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else {
+            NSSound.beep()
+            return
+        }
+
+        VaultAuthService.shared.authenticate(folderID: folder.identifier, reason: "Unlock \"\(folder.title)\" vault") { success in
+            DispatchQueue.main.async {
+                guard success else { return }
+                AppEnvironment.current.menuManager.refresh()
+                AppEnvironment.current.menuManager.popUpSnippetFolder(folder)
+            }
+        }
+    }
+
     @objc func pasteAsPlainText() {
         let pasteboard = NSPasteboard.general
         guard let string = pasteboard.string(forType: .string) else { return }
@@ -85,6 +154,10 @@ class AppDelegate: NSObject, NSMenuItemValidation {
 
     @objc func terminate() {
         terminateApplication()
+    }
+
+    @objc func checkForUpdates(_ sender: Any?) {
+        updaterDriver.checkForUpdates()
     }
 
     @objc func clearAllHistory() {
@@ -152,7 +225,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
     // MARK: - Login Item Methods
     private func promptToAddLoginItems() {
         let alert = NSAlert()
-        alert.messageText = L10n.launchClipyOnSystemStartup
+        alert.messageText = "Launch \(Constants.Application.name) on system startup?"
         alert.informativeText = L10n.youCanChangeThisSettingInThePreferencesIfYouWant
         alert.addButton(withTitle: L10n.launchOnSystemStartup)
         alert.addButton(withTitle: L10n.donTLaunch)
@@ -194,19 +267,14 @@ extension AppDelegate: NSApplicationDelegate {
         AppEnvironment.replaceCurrent(environment: AppEnvironment.fromStorage())
         // UserDefaults
         CPYUtilities.registerUserDefaultKeys()
-        // Check Accessibility Permission
-        AppEnvironment.current.accessibilityService.isAccessibilityEnabled(isPrompt: true)
+        // Don't prompt on launch. If accessibility is missing, we prompt on the first
+        // paste attempt so users aren't nagged every time the app starts.
+        _ = AppEnvironment.current.accessibilityService.isAccessibilityEnabled(isPrompt: false)
 
         // Show Login Item
         if !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.loginItem) && !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.suppressAlertForLoginItem) {
             promptToAddLoginItems()
         }
-
-        // Sparkle
-        let updater = SUUpdater.shared()
-        updater?.feedURL = Constants.Application.appcastURL
-        updater?.automaticallyChecksForUpdates = AppEnvironment.current.defaults.bool(forKey: Constants.Update.enableAutomaticCheck)
-        updater?.updateCheckInterval = TimeInterval(AppEnvironment.current.defaults.integer(forKey: Constants.Update.checkInterval))
 
         // Binding Events
         bind()
@@ -219,6 +287,7 @@ extension AppDelegate: NSApplicationDelegate {
 
         // Managers
         AppEnvironment.current.menuManager.setup()
+        updaterDriver.refreshState()
 
         // Initialize collect mode indicator (observes queue state)
         _ = CollectModeIndicatorController.shared
@@ -227,9 +296,9 @@ extension AppDelegate: NSApplicationDelegate {
         try? Tips.configure([.displayFrequency(.weekly)])
 
         #if DEBUG
-        logger.info("Clipy Dev (debug build) launched")
+        logger.info("\(Constants.Application.name) (debug build) launched")
         #else
-        logger.info("Clipy launched successfully")
+        logger.info("\(Constants.Application.name) launched successfully")
         #endif
     }
 

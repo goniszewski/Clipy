@@ -20,16 +20,13 @@ private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "HotKey"
 final class HotKeyService: NSObject {
 
     // MARK: - Properties
-    // Default shortcuts — main menu hotkey left empty to avoid conflicts
-    // Modifiers: Shift+Cmd = 768 (256 shift + 512 cmd) -- actually let me check
-    // NSEvent.ModifierFlags.shift.rawValue = 131072, .command.rawValue = 1048576
-    // Carbon modifiers: shiftKey = 512, cmdKey = 256 → combined = 768
+    // Default shortcuts matching the classic Clipy menu flow.
     static var defaultKeyCombos: [String: Any] = {
-        // MainMenu:       (none — legacy NSMenu, use search panel instead)
-        // HistoryMenu:    Shift + ⌘ + V  (opens search panel)
-        // SnippetMenu:    Shift + ⌘ + B  (opens snippet picker)
-        // ClearHistory:   Shift + ⌘ + D  (clear history)
-        return [Constants.Menu.history: ["keyCode": 9, "modifiers": 768],
+        // MainMenu:    ⌘ + Shift + V
+        // HistoryMenu: ⌘ + Control + V
+        // SnippetMenu: ⌘ + Shift + B
+        return [Constants.Menu.clip: ["keyCode": 9, "modifiers": 768],
+                Constants.Menu.history: ["keyCode": 9, "modifiers": 4352],
                 Constants.Menu.snippet: ["keyCode": 11, "modifiers": 768]]
     }()
 
@@ -42,14 +39,17 @@ final class HotKeyService: NSObject {
 
 // MARK: - Actions
 extension HotKeyService {
+    @MainActor
     @objc func popupMainMenu() {
         AppEnvironment.current.menuManager.popUpMenu(.main)
     }
 
+    @MainActor
     @objc func popupHistoryMenu() {
-        ClipSearchWindowController.shared.toggle()
+        AppEnvironment.current.menuManager.popUpMenu(.history)
     }
 
+    @MainActor
     @objc func popUpSnippetMenu() {
         if AppEnvironment.current.defaults.bool(forKey: Constants.Snippets.useModernPicker) {
             SnippetPickerWindowController.shared.toggle()
@@ -85,6 +85,9 @@ extension HotKeyService {
             logger.info("Hotkeys disabled via Developer Mode — skipping registration")
             return
         }
+
+        backfillMissingDefaultKeyCombos()
+
         // Migration new framework
         if !AppEnvironment.current.defaults.bool(forKey: Constants.HotKey.migrateNewKeyCombo) {
             migrationKeyCombos()
@@ -126,13 +129,26 @@ extension HotKeyService {
 
     private func savedKeyCombo(forKey key: String) -> KeyCombo? {
         guard let data = AppEnvironment.current.defaults.object(forKey: key) as? Data else { return nil }
-        guard let keyCombo = NSKeyedUnarchiver.unarchiveObject(with: data) as? KeyCombo else { return nil }
+        guard let keyCombo: KeyCombo = ArchiveCompatibility.unarchiveObject(with: data) else { return nil }
         return keyCombo
     }
 }
 
 // MARK: - Register
 private extension HotKeyService {
+    func backfillMissingDefaultKeyCombos() {
+        backfillDefaultKeyCombo(forMenuKey: Constants.Menu.clip, userDefaultsKey: Constants.HotKey.mainKeyCombo)
+        backfillDefaultKeyCombo(forMenuKey: Constants.Menu.history, userDefaultsKey: Constants.HotKey.historyKeyCombo)
+        backfillDefaultKeyCombo(forMenuKey: Constants.Menu.snippet, userDefaultsKey: Constants.HotKey.snippetKeyCombo)
+    }
+
+    func backfillDefaultKeyCombo(forMenuKey menuKey: String, userDefaultsKey: String) {
+        guard AppEnvironment.current.defaults.object(forKey: userDefaultsKey) == nil else { return }
+        guard let (keyCode, modifiers) = parse(with: HotKeyService.defaultKeyCombos, forKey: menuKey) else { return }
+        guard let keyCombo = KeyCombo(QWERTYKeyCode: keyCode, carbonModifiers: modifiers) else { return }
+        AppEnvironment.current.defaults.set(keyCombo.archive(), forKey: userDefaultsKey)
+    }
+
     func register(with type: MenuType, keyCombo: KeyCombo?) {
         save(with: type, keyCombo: keyCombo)
         HotKeyCenter.shared.unregisterHotKey(with: type.rawValue)
@@ -180,16 +196,12 @@ extension HotKeyService {
     private var folderKeyCombos: [String: KeyCombo]? {
         get {
             guard let data = AppEnvironment.current.defaults.object(forKey: Constants.HotKey.folderKeyCombos) as? Data else { return nil }
-            return NSKeyedUnarchiver.unarchiveObject(with: data) as? [String: KeyCombo]
+            return ArchiveCompatibility.unarchiveObject(with: data)
         }
         set {
             if let value = newValue {
-                do {
-                    let data = try NSKeyedArchiver.archivedData(withRootObject: value, requiringSecureCoding: false)
-                    AppEnvironment.current.defaults.set(data, forKey: Constants.HotKey.folderKeyCombos)
-                } catch {
-                    logger.error("Failed to archive folder key combos: \(error.localizedDescription)")
-                }
+                guard let data = ArchiveCompatibility.archivedData(withRootObject: value) else { return }
+                AppEnvironment.current.defaults.set(data, forKey: Constants.HotKey.folderKeyCombos)
             } else {
                 AppEnvironment.current.defaults.removeObject(forKey: Constants.HotKey.folderKeyCombos)
             }
@@ -216,6 +228,7 @@ extension HotKeyService {
         folderKeyCombos = keyCombos
     }
 
+    @MainActor
     @objc func popupSnippetFolder(_ object: AnyObject) {
         guard let hotKey = object as? HotKey else { return }
         guard let realm = Realm.safeInstance() else { return }
@@ -233,8 +246,8 @@ extension HotKeyService {
     }
 
     fileprivate func setupSnippetHotKeys() {
-        folderKeyCombos?.forEach {
-            let hotKey = HotKey(identifier: $0, keyCombo: $1, target: self, action: #selector(HotKeyService.popupSnippetFolder(_:)))
+        folderKeyCombos?.forEach { entry in
+            let hotKey = HotKey(identifier: entry.key, keyCombo: entry.value, target: self, action: #selector(HotKeyService.popupSnippetFolder(_:)))
             hotKey.register()
         }
     }

@@ -13,7 +13,26 @@
 import Foundation
 
 extension Bundle {
-    var appVersion: String? {
-        return infoDictionary?["CFBundleShortVersionString"] as? String
+    var appVersion: String {
+        (infoDictionary?["CFBundleShortVersionString"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nonEmpty ?? "Unknown"
+    }
+
+    var appBuildVersion: String? {
+        (infoDictionary?["CFBundleVersion"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nonEmpty
+    }
+
+    var appDisplayVersion: String {
+        guard let build = appBuildVersion, build != appVersion else { return appVersion }
+        return "\(appVersion) (\(build))"
+    }
+}
+
+private extension String {
+    var nonEmpty: String? {
+        isEmpty ? nil : self
     }
 }

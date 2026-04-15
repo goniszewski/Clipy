@@ -4,14 +4,14 @@
 
 <br>
 
-[![CI](https://github.com/jeanluciradukunda/Clipy/actions/workflows/ci.yml/badge.svg)](https://github.com/jeanluciradukunda/Clipy/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/jeanluciradukunda/Clipy)](https://github.com/jeanluciradukunda/Clipy/releases/latest)
+[![CI](https://github.com/goniszewski/Clipy/actions/workflows/ci.yml/badge.svg)](https://github.com/goniszewski/Clipy/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/goniszewski/Clipy)](https://github.com/goniszewski/Clipy/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![macOS](https://img.shields.io/badge/macOS-14.0%2B-brightgreen)](https://github.com/jeanluciradukunda/Clipy/releases)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-brightgreen)](https://github.com/goniszewski/Clipy/releases)
 
-**Clipy** is a clipboard manager for macOS — rebuilt with a modern SwiftUI interface, Spotlight-style search, syntax highlighting, OCR, smart actions, and more.
+**Clipy Classic** is a clipboard manager for macOS — a modern reimplementation of the original Clipy experience with a SwiftUI interface, Spotlight-style search, syntax highlighting, OCR, smart actions, and more.
 
-> *Forked from [Clipy/Clipy](https://github.com/Clipy/Clipy) — the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project.*
+> *Built on [Clipy/Clipy](https://github.com/Clipy/Clipy), the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project. This fork is currently maintained by Robert Goniszewski.*
 
 <!-- TODO: Add demo GIF or video recorded with Screen Studio -->
 <!-- <p align="center"><img src="./Resources/demo.gif" width="700"></p> -->
@@ -22,31 +22,87 @@
 
 ### Download
 
-1. Grab the latest `.dmg` from [**Releases**](https://github.com/jeanluciradukunda/Clipy/releases/latest)
+1. Grab the latest `.dmg` from [**Releases**](https://github.com/goniszewski/Clipy/releases/latest)
 2. Open the DMG and drag Clipy to Applications
 3. Launch Clipy — it appears in your menu bar
 
-> Signed and notarized with Apple Developer ID. No Terminal commands or security workarounds needed.
+> Release DMGs are intended to be Developer ID-signed and notarized once Apple signing credentials are configured.
+
+### Gatekeeper Bypass for Unsigned Builds
+
+If you're testing a local build or an unsigned release artifact, macOS may block Clipy on first launch.
+
+1. In Finder, open `Applications`
+2. Control-click `Clipy.app`
+3. Choose `Open`
+4. Confirm the warning dialog by clicking `Open` again
+
+If the app is still blocked:
+
+1. Open `System Settings` → `Privacy & Security`
+2. Scroll to the security section near the bottom
+3. Click `Open Anyway` for Clipy
+4. Retry launching the app and confirm the final prompt
+
+This bypass is only needed for unsigned or unnotarized builds. Proper Developer ID-signed releases should launch normally.
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/jeanluciradukunda/Clipy.git && cd Clipy
-bundle install --path=vendor/bundle
-bundle exec pod install
+git clone https://github.com/goniszewski/Clipy.git && cd Clipy
+brew install cocoapods
+pod install
 open Clipy.xcworkspace
 # Build (Cmd+B) and Run (Cmd+R) the "Clipy" scheme
 ```
 
 **Requires**: macOS 14.0 Sonoma+ and Xcode 15.0+
 
+### Versioning
+
+Clipy now uses calendar-based versions in the format `YY.M.patch`.
+For example, the release cycle started on April 15, 2026 is `26.4.0`.
+
 ### Updating
 
-**Auto-update:** Preferences → Updates → Check for Updates, then click **Update Now** and follow the prompts.
+**Auto-update:** Preferences → Updates → **Check for Updates**. Sparkle handles signed update checks, download, install, and relaunch.
 
 **Manual:** Download the latest DMG, drag to Applications (replace existing), and launch.
 
+If Gatekeeper blocks the app, follow the unsigned-build bypass steps above.
+
 > Accessibility permission persists across updates — no need to re-grant.
+
+### Release Infrastructure
+
+Clipy's auto-update pipeline uses Sparkle with GitHub-hosted artifacts:
+
+- `docs/appcast.xml` is published via GitHub Pages at `https://goniszewski.github.io/Clipy/appcast.xml`
+- Sparkle `.zip` update archives are uploaded to GitHub Releases
+- `.dmg` archives are uploaded to GitHub Releases for manual installs
+- full trust on other Macs requires Developer ID signing and notarization
+
+Required GitHub Actions secrets:
+
+- `DEVELOPER_ID_CERTIFICATE_BASE64`
+- `DEVELOPER_ID_CERTIFICATE_PASSWORD`
+- `APPLE_TEAM_ID`
+- `APPLE_ID`
+- `APPLE_ID_APP_PASSWORD`
+- `SPARKLE_PRIVATE_KEY`
+
+`SPARKLE_PRIVATE_KEY` is the private EdDSA key exported from Sparkle's `generate_keys` tool. The public key is embedded in `Info.plist` as `SUPublicEDKey`.
+
+One-time GitHub setup:
+
+1. Enable GitHub Pages for this repository with source `main` and folder `/docs`
+2. Export the Sparkle private key from your login keychain:
+   ```bash
+   ./Pods/Sparkle/bin/generate_keys -x /tmp/clipy-sparkle-private-key
+   gh secret set SPARKLE_PRIVATE_KEY < /tmp/clipy-sparkle-private-key
+   rm /tmp/clipy-sparkle-private-key
+   ```
+3. Add the Apple signing and notarization secrets listed above
 
 ### Uninstall
 
@@ -145,7 +201,7 @@ Collect multiple clips and paste them all at once — merged with a configurable
 
 ### Other Features
 
-- **Auto-update** — checks GitHub Releases, downloads `.dmg`, installs, and relaunches automatically
+- **Auto-update** — Sparkle checks the GitHub Pages appcast, downloads signed release archives from GitHub Releases, and installs updates using the standard macOS updater flow
 - **Color code detection** with visual swatch preview
 - **Exclude apps** from clipboard monitoring
 - **Hotkey support** for history, snippets, and snippet folders
@@ -207,8 +263,8 @@ Default global hotkeys (configurable in Settings → Shortcuts):
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full setup instructions.
 
 ```bash
-bundle install --path=vendor/bundle
-bundle exec pod install
+brew install cocoapods
+pod install
 open Clipy.xcworkspace
 ```
 
@@ -216,12 +272,12 @@ open Clipy.xcworkspace
 
 Both can coexist on the same Mac with separate data. To run both simultaneously, enable Developer Mode in the dev build's settings and toggle **"Disable Global Hotkeys"** — this prevents hotkey conflicts.
 
-| | **Clipy** (Release) | **Clipy Dev** (Debug) |
+| | **Clipy Classic** (Release) | **Clipy Classic Dev** (Debug) |
 |---|---|---|
 | Bundle ID | `com.clipy-app.Clipy` | `com.clipy-app.Clipy-Dev.debug` |
 | Data directory | `~/Library/Application Support/com.clipy-app.Clipy/` | `~/Library/Application Support/com.clipy-app.Clipy-Dev.debug/` |
 | Menu bar | Standard icon | Icon with orange **DEV** badge |
-| Settings title | "Clipy Settings" | "Clipy Dev Settings" |
+| Settings title | "Clipy Classic Settings" | "Clipy Classic Dev Settings" |
 | Install | DMG from Releases | `Cmd+R` in Xcode |
 | Accessibility | Persists across updates (Developer ID-signed) | Persists across rebuilds (same local signing identity) |
 
@@ -252,21 +308,21 @@ Clipy/Sources/
 
 ## Roadmap
 
-See [Issues](https://github.com/jeanluciradukunda/Clipy/issues) for the full feature roadmap. Look for `good first issue` labels if you'd like to contribute.
+See [Issues](https://github.com/goniszewski/Clipy/issues) for the full feature roadmap. Look for `good first issue` labels if you'd like to contribute.
 
 ---
 
 ## Attribution
 
-Clipy is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the [Clipy Project](https://github.com/Clipy). Special thanks to [@naotaka](https://github.com/naotaka) for publishing the original [ClipMenu](https://github.com/naotaka/ClipMenu) as open source.
+Clipy Classic is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the [Clipy Project](https://github.com/Clipy). The current fork is maintained by **Robert Goniszewski**. Special thanks to [@naotaka](https://github.com/naotaka) for publishing the original [ClipMenu](https://github.com/naotaka/ClipMenu) as open source, and to Jean Luc Iradukunda for the intermediate modernization work this fork builds on.
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=jeanluciradukunda%2FClipy&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=goniszewski%2FClipy&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=jeanluciradukunda/Clipy&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=jeanluciradukunda/Clipy&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=jeanluciradukunda/Clipy&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=goniszewski/Clipy&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=goniszewski/Clipy&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=goniszewski/Clipy&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -275,4 +331,4 @@ Clipy is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), origi
 MIT License. See [LICENSE](LICENSE) for details.
 
 Copyright (c) 2015-2018 Clipy Project
-Copyright (c) 2024-2026 Jean Luc Iradukunda
+Copyright (c) 2026 Robert Goniszewski

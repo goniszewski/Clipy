@@ -3,9 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and starting on April 15, 2026 this project uses calendar-based versions in the format `YY.M.patch`.
 
-## [2.0.0] - 2026-03-19
+## [26.4.0] - 2026-04-15
+
+### Changed
+- Switched the app and release train to calendar-based versioning (`YY.M.patch`)
+- Switched auto-updates to Sparkle 2 using a GitHub Pages-hosted appcast and signed update archives
+- GitHub Releases now host the signed update downloads instead of acting as the update check source
+
+## [26.3.0] - 2026-03-19
 
 ### Added
 - **Spotlight-style search panel** — split-pane UI with filterable clip list, rich preview, and action bar
@@ -40,4 +47,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Realm schema migrated to v10 (added `isPinned` and `ocrText` to CPYClip, `isVault` to CPYFolder)
 
 ### Attribution
-This project is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the Clipy Project. See [LICENSE](LICENSE) for details.
+Clipy Classic is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the Clipy Project. The current fork is maintained by Robert Goniszewski and builds on earlier modernization work by Jean Luc Iradukunda. See [LICENSE](LICENSE) for details.

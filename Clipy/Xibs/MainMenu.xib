@@ -15,11 +15,14 @@
         <customObject id="IQ9-Br-n8g" userLabel="AppDelegate" customClass="AppDelegate" customModule="Clipy" customModuleProvider="target"/>
         <menu title="MainMenu" systemMenu="main" id="jeR-OB-GsD" userLabel="MainMenu">
             <items>
-                <menuItem title="Clipy" id="Zat-vi-KS9">
-                    <menu key="submenu" title="Clipy" systemMenu="apple" id="VBj-p9-ODY">
+                <menuItem title="Clipy Classic" id="Zat-vi-KS9">
+                    <menu key="submenu" title="Clipy Classic" systemMenu="apple" id="VBj-p9-ODY">
                         <items>
-                            <menuItem title="About ClipMenu" id="Pr1-7V-tJO">
+                            <menuItem title="About Clipy Classic" id="Pr1-7V-tJO">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="showAboutPanel:" target="IQ9-Br-n8g" id="rTV-ET-V1t"/>
+                                </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="I6z-OO-O1g">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
@@ -34,7 +37,7 @@
                             <menuItem isSeparatorItem="YES" id="0Kd-Pq-IHx">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Hide ClipMenu" keyEquivalent="h" id="LO5-8K-Kr9"/>
+                            <menuItem title="Hide Clipy Classic" keyEquivalent="h" id="LO5-8K-Kr9"/>
                             <menuItem title="Hide Others" keyEquivalent="h" id="hPA-9S-0Fr">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                             </menuItem>
@@ -42,7 +45,7 @@
                             <menuItem isSeparatorItem="YES" id="kh7-TQ-Gy7">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Quit ClipMenu" id="imj-9R-rzK"/>
+                            <menuItem title="Quit Clipy Classic" id="imj-9R-rzK"/>
                         </items>
                     </menu>
                 </menuItem>
@@ -138,7 +141,7 @@
                 <menuItem title="Help" id="0x6-nt-Xpj">
                     <menu key="submenu" title="Help" id="Z2c-gh-pHm">
                         <items>
-                            <menuItem title="ClipMenu Help" keyEquivalent="?" id="Juh-pg-E6E">
+                            <menuItem title="Clipy Classic Help" keyEquivalent="?" id="Juh-pg-E6E">
                                 <connections>
                                     <action selector="showHelp:" target="-1" id="Wh5-de-Hzq"/>
                                 </connections>

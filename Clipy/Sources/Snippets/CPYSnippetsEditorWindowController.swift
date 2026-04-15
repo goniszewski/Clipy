@@ -63,6 +63,7 @@ final class CPYSnippetsEditorWindowController: NSWindowController {
         self.window?.collectionBehavior = NSWindow.CollectionBehavior.canJoinAllSpaces
         self.window?.backgroundColor = NSColor(white: 0.99, alpha: 1)
         self.window?.titlebarAppearsTransparent = true
+        self.window?.title = Constants.Application.snippetEditorTitle
         guard let realm = Realm.safeInstance() else { return }
         folders = realm.objects(CPYFolder.self)
                     .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
@@ -333,7 +334,7 @@ extension CPYSnippetsEditorWindowController: NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
         let pasteboard = info.draggingPasteboard
         guard let data = pasteboard.data(forType: NSPasteboard.PasteboardType(rawValue: Constants.Common.draggedDataType)) else { return NSDragOperation() }
-        guard let draggedData = NSKeyedUnarchiver.unarchiveObject(with: data) as? CPYDraggedData else { return NSDragOperation() }
+        guard let draggedData: CPYDraggedData = ArchiveCompatibility.unarchiveObject(with: data) else { return NSDragOperation() }
 
         switch draggedData.type {
         case .folder where item == nil:
@@ -348,7 +349,7 @@ extension CPYSnippetsEditorWindowController: NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
         let pasteboard = info.draggingPasteboard
         guard let data = pasteboard.data(forType: NSPasteboard.PasteboardType(rawValue: Constants.Common.draggedDataType)) else { return false }
-        guard let draggedData = NSKeyedUnarchiver.unarchiveObject(with: data) as? CPYDraggedData else { return false }
+        guard let draggedData: CPYDraggedData = ArchiveCompatibility.unarchiveObject(with: data) else { return false }
 
         switch draggedData.type {
         case .folder where index != draggedData.index:

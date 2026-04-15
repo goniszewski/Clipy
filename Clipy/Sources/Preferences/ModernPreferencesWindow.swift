@@ -11,6 +11,11 @@ import Cocoa
 import TipKit
 import RealmSwift
 
+private enum ModernPreferencesLayout {
+    static let windowWidth: CGFloat = 640
+    static let windowHeight: CGFloat = 560
+}
+
 // MARK: - Preferences Tab
 enum PreferenceTab: String, Identifiable {
     case general = "General"
@@ -20,6 +25,7 @@ enum PreferenceTab: String, Identifiable {
     case excludedApps = "Excluded Apps"
     case updates = "Updates"
     case developer = "Developer"
+    case about = "About"
 
     var id: String { rawValue }
 
@@ -32,6 +38,7 @@ enum PreferenceTab: String, Identifiable {
         case .excludedApps: return "xmark.app"
         case .updates: return "arrow.triangle.2.circlepath"
         case .developer: return "hammer"
+        case .about: return "info.circle"
         }
     }
 
@@ -41,6 +48,7 @@ enum PreferenceTab: String, Identifiable {
         if UserDefaults.standard.bool(forKey: Constants.Developer.devModeEnabled) {
             tabs.append(.developer)
         }
+        tabs.append(.about)
         return tabs
     }
 }
@@ -105,11 +113,13 @@ struct ModernPreferencesView: View {
                     UpdatesPreferencesView()
                 case .developer:
                     DeveloperPreferencesView()
+                case .about:
+                    AboutPreferencesView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 600, height: 440)
+        .frame(width: ModernPreferencesLayout.windowWidth, height: ModernPreferencesLayout.windowHeight)
         .onChange(of: devMode) { _, enabled in
             if !enabled && selectedTab == .developer {
                 selectedTab = .general
@@ -1192,267 +1202,220 @@ struct ExcludedAppsPreferencesView: View {
 }
 
 // MARK: - Updates Preferences
-// MARK: - Update State
-enum UpdateState: Equatable {
-    case idle
-    case checking
-    case upToDate
-    case available(version: String, downloadURL: String)
-    case downloading(progress: Double)
-    case installing
-    case failed(message: String)
-}
-
 struct UpdatesPreferencesView: View {
-    @State private var state: UpdateState = .idle
-    @State private var latestVersion: String?
+    @ObservedObject private var updaterDriver = SparkleUpdaterDriver.shared
 
-    private let currentVersion = Bundle.main.appVersion ?? "Unknown"
-    private let repoAPI = "https://api.github.com/repos/jeanluciradukunda/Clipy/releases/latest"
+    private let displayedVersion = Bundle.main.appDisplayVersion
 
     var body: some View {
         Form {
             Section {
-                // Current version
                 HStack {
                     Text("Current version")
                     Spacer()
-                    Text(currentVersion)
+                    Text(displayedVersion)
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
 
-                // Status row
-                statusView
+                HStack {
+                    Label(updateReadinessTitle, systemImage: updateReadinessIcon)
+                        .font(.system(size: 12))
+                        .foregroundStyle(updateReadinessColor)
+                    Spacer()
+                    Text(updateReadinessDetail)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
 
-                // Action buttons
-                actionButtons
+                HStack {
+                    Text("Automatic checks")
+                    Spacer()
+                    Text(updaterDriver.automaticallyChecksForUpdates ? "Enabled" : "Disabled")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(updaterDriver.automaticallyChecksForUpdates ? .green : .secondary)
+                }
+
+                HStack {
+                    Text("Automatic updates")
+                    Spacer()
+                    Text(updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(updaterDriver.automaticallyDownloadsUpdates ? .green : .secondary)
+                }
+
+                HStack {
+                    Text("Appcast")
+                    Spacer()
+                    Text(updaterDriver.feedURL.absoluteString)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                HStack {
+                    Button("Check for Updates") {
+                        updaterDriver.checkForUpdates()
+                    }
+                    .disabled(!updaterDriver.canCheckForUpdates)
+
+                    Spacer()
+
+                    Button("View Releases") {
+                        NSWorkspace.shared.open(Constants.Application.releasesURL)
+                    }
+                }
             } header: {
                 Label("Software Updates", systemImage: "arrow.triangle.2.circlepath")
             } footer: {
-                Text("Updates are downloaded from GitHub Releases and installed automatically.")
+                Text("Sparkle checks \(updaterDriver.feedURL.host ?? "the configured appcast") for updates, downloads signed release archives from GitHub Releases, and installs them using the standard updater flow.")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .onAppear { checkForUpdates() }
+        .onAppear { updaterDriver.refreshState() }
     }
 
-    // MARK: - Status View
+    private var updateReadinessTitle: String {
+        updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
+    }
 
-    @ViewBuilder
-    private var statusView: some View {
-        switch state {
-        case .idle:
-            EmptyView()
-        case .checking:
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Checking for updates...")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-        case .upToDate:
-            HStack {
-                Label("You're up to date", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.green)
-                Spacer()
-                Text(currentVersion)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.secondary)
-            }
-        case .available(let version, _):
-            HStack {
-                Label("Update available", systemImage: "arrow.down.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.orange)
-                Spacer()
-                Text("\(currentVersion) → \(version)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.orange)
-            }
-        case .downloading(let progress):
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Downloading update...")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+    private var updateReadinessIcon: String {
+        updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var updateReadinessColor: SwiftUI.Color {
+        updaterDriver.canCheckForUpdates ? .green : .orange
+    }
+
+    private var updateReadinessDetail: String {
+        updaterDriver.canCheckForUpdates ? updaterDriver.feedURL.host ?? "configured" : "check configuration"
+    }
+}
+
+// MARK: - About Preferences
+struct AboutPreferencesView: View {
+    private let bundle = Bundle.main
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center, spacing: 16) {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(Constants.Application.releaseName)
+                            .font(.system(size: 24, weight: .semibold))
+                        Text(Constants.Application.aboutTagline)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        Text(versionLine)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                    }
+
                     Spacer()
-                    Text("\(Int(progress * 100))%")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
                 }
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-            }
-        case .installing:
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Installing update...")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-        case .failed(let message):
-            HStack {
-                Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Project", systemImage: "person.2")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        aboutRow(title: "Maintainer", value: "\(Constants.Application.maintainerName) (\(Constants.Application.maintainerHandle))")
+                        aboutRow(title: "Update feed", value: Constants.Application.appcastURL.absoluteString, monospace: true)
+
+                        Divider()
+
+                        Text(Constants.Application.aboutLineage)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Divider()
+
+                        Text(Constants.Application.aboutCopyright)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal, 24)
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Links", systemImage: "link")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        HStack(spacing: 8) {
+                            aboutLinkButton("Repository", url: Constants.Application.repositoryURL)
+                            aboutLinkButton("Releases", url: Constants.Application.releasesURL)
+                            aboutLinkButton("Changelog", url: Constants.Application.changelogURL)
+                        }
+
+                        HStack(spacing: 8) {
+                            aboutLinkButton("Issues", url: Constants.Application.issuesURL)
+                            aboutLinkButton("Discussions", url: Constants.Application.discussionsURL)
+                            aboutLinkButton("Check for Updates") {
+                                SparkleUpdaterDriver.shared.checkForUpdates()
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 18)
             }
         }
     }
 
-    // MARK: - Action Buttons
+    private var versionLine: String {
+        if let build = bundle.appBuildVersion, build != bundle.appVersion {
+            return "Version \(bundle.appVersion) • Build \(build)"
+        }
+        return "Version \(bundle.appVersion)"
+    }
+
+    private var appIcon: NSImage {
+        NSApp.applicationIconImage ?? NSImage()
+    }
 
     @ViewBuilder
-    private var actionButtons: some View {
-        HStack {
-            switch state {
-            case .idle, .upToDate, .failed:
-                Button("Check for Updates") { checkForUpdates() }
-            case .checking:
-                Button("Check for Updates") {}.disabled(true)
-            case .available(_, let url):
-                Button("Update Now") { downloadAndInstall(from: url) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-            case .downloading:
-                Button("Downloading...") {}.disabled(true)
-            case .installing:
-                Button("Installing...") {}.disabled(true)
-            }
+    private func aboutRow(title: String, value: String, monospace: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .leading)
 
-            Spacer()
+            Text(value)
+                .font(.system(size: monospace ? 11 : 12, design: monospace ? .monospaced : .default))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
 
-            Button("View Releases") {
-                NSWorkspace.shared.open(URL(string: "https://github.com/jeanluciradukunda/Clipy/releases")!)
-            }
+            Spacer(minLength: 0)
         }
     }
 
-    // MARK: - Check
-
-    private func checkForUpdates() {
-        state = .checking
-        Task {
-            do {
-                let url = URL(string: repoAPI)!
-                let (data, _) = try await URLSession.shared.data(from: url)
-                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let tagName = json["tag_name"] as? String else {
-                    await MainActor.run { state = .failed(message: "Could not parse release info") }
-                    return
-                }
-
-                let version = tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
-
-                // Find .dmg asset URL
-                var dmgURL: String?
-                if let assets = json["assets"] as? [[String: Any]] {
-                    dmgURL = assets.first(where: { ($0["name"] as? String)?.hasSuffix(".dmg") == true })?["browser_download_url"] as? String
-                }
-
-                await MainActor.run {
-                    latestVersion = version
-                    if version == currentVersion {
-                        state = .upToDate
-                    } else if let dmgURL {
-                        state = .available(version: version, downloadURL: dmgURL)
-                    } else {
-                        state = .failed(message: "No .dmg found in release")
-                    }
-                }
-            } catch {
-                await MainActor.run { state = .failed(message: "Network error: \(error.localizedDescription)") }
-            }
+    private func aboutLinkButton(_ title: String, url: URL) -> some View {
+        Button(title) {
+            NSWorkspace.shared.open(url)
         }
     }
 
-    // MARK: - Download & Install
-
-    private func downloadAndInstall(from urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        state = .downloading(progress: 0)
-
-        Task {
-            do {
-                // Download with progress
-                let (tempURL, _) = try await URLSession.shared.download(from: url, delegate: nil)
-                let dmgPath = FileManager.default.temporaryDirectory.appendingPathComponent("Clipy-update.dmg")
-                try? FileManager.default.removeItem(at: dmgPath)
-                try FileManager.default.moveItem(at: tempURL, to: dmgPath)
-
-                await MainActor.run { state = .installing }
-
-                // Mount DMG
-                let mountProcess = Process()
-                mountProcess.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-                mountProcess.arguments = ["attach", dmgPath.path, "-nobrowse", "-quiet"]
-                let mountPipe = Pipe()
-                mountProcess.standardOutput = mountPipe
-                try mountProcess.run()
-                mountProcess.waitUntilExit()
-
-                // Find mounted volume
-                let volumePath = try FileManager.default.contentsOfDirectory(atPath: "/Volumes")
-                    .first(where: { $0.hasPrefix("Clipy") })
-                    .map { "/Volumes/\($0)" }
-
-                guard let volume = volumePath else {
-                    await MainActor.run { state = .failed(message: "Could not mount DMG") }
-                    return
-                }
-
-                // Find .app in the volume
-                let appName = try FileManager.default.contentsOfDirectory(atPath: volume)
-                    .first(where: { $0.hasSuffix(".app") })
-
-                guard let appName else {
-                    await MainActor.run { state = .failed(message: "No .app found in DMG") }
-                    return
-                }
-
-                let sourceApp = "\(volume)/\(appName)"
-                let destApp = "/Applications/Clipy.app"
-
-                // Atomic replace: replaceItemAt keeps a backup of the old app
-                // and swaps atomically so the user is never left without an app
-                let destURL = URL(fileURLWithPath: destApp)
-                let sourceURL = URL(fileURLWithPath: sourceApp)
-                if FileManager.default.fileExists(atPath: destApp) {
-                    _ = try FileManager.default.replaceItemAt(destURL, withItemAt: sourceURL, backupItemName: nil, options: .usingNewMetadataOnly)
-                } else {
-                    try FileManager.default.copyItem(at: sourceURL, to: destURL)
-                }
-
-                // Unmount DMG
-                let detachProcess = Process()
-                detachProcess.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
-                detachProcess.arguments = ["detach", volume, "-quiet"]
-                try? detachProcess.run()
-                detachProcess.waitUntilExit()
-
-                // Clean up
-                try? FileManager.default.removeItem(at: dmgPath)
-
-                // Relaunch
-                await MainActor.run {
-                    let task = Process()
-                    task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                    task.arguments = [destApp]
-                    try? task.run()
-
-                    // Quit current instance after short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        NSApplication.shared.terminate(nil)
-                    }
-                }
-            } catch {
-                await MainActor.run { state = .failed(message: "Install failed: \(error.localizedDescription)") }
-            }
-        }
+    private func aboutLinkButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
     }
 }
 
@@ -1618,16 +1581,17 @@ class ModernPreferencesWindowController: NSWindowController {
 
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 440),
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: ModernPreferencesLayout.windowWidth,
+                height: ModernPreferencesLayout.windowHeight
+            ),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: true
         )
-        #if DEBUG
-        window.title = "Clipy Dev Settings"
-        #else
-        window.title = "Clipy Settings"
-        #endif
+        window.title = Constants.Application.settingsTitle
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = false
         window.center()

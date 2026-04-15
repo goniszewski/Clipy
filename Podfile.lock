@@ -23,7 +23,7 @@ PODS:
   - RealmSwift (10.7.2):
     - Realm (= 10.7.2)
   - Sauce (2.1.0)
-  - Sparkle (1.26.0)
+  - Sparkle (2.9.1)
   - SwiftGen (6.4.0)
   - SwiftHEXColors (1.4.1)
   - SwiftLint (0.40.3)
@@ -37,7 +37,7 @@ DEPENDENCIES:
   - Quick (~> 7.0)
   - RealmSwift
   - Sauce
-  - Sparkle
+  - Sparkle (= 2.9.1)
   - SwiftGen
   - SwiftHEXColors
   - SwiftLint
@@ -78,11 +78,11 @@ SPEC CHECKSUMS:
   Realm: e523da9ade306c5ae87e85dc09fdef148d3e1cc1
   RealmSwift: 4f6758c3adbdcc87f7b7777107226532a077f61c
   Sauce: a4075a04b6041e7a0c992a952cc79f7a0ebdb8e3
-  Sparkle: d56d028f4b0c123577825f5d1004f6140d77f90e
+  Sparkle: a4115cd9a339b297a61163256e6954d9e35297ce
   SwiftGen: 67860cc7c3cfc2ed25b9b74cfd55495fc89f9108
   SwiftHEXColors: 1cb6e5d55c52749aa33db8f088ac55eb71ca4c7f
   SwiftLint: dfd554ff0dff17288ee574814ccdd5cea85d76f7
 
-PODFILE CHECKSUM: c90c4e837a5701cf5b41ebc929e79ae7054bbf33
+PODFILE CHECKSUM: 43e4c76bc6b630c4ab5619be1ee2c334564e5bbd
 
 COCOAPODS: 1.16.2

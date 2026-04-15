@@ -230,7 +230,7 @@ class ClipSearchViewModel: ObservableObject {
             var searchableText = clip.title
             if searchableText.isEmpty {
                 let path = clip.dataPath
-                if !path.isEmpty, let data = NSKeyedUnarchiver.unarchiveObject(withFile: path) as? CPYClipData {
+                if !path.isEmpty, let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: path) {
                     if !data.stringValue.isEmpty {
                         searchableText = data.stringValue
                     }
@@ -369,7 +369,7 @@ class ClipSearchViewModel: ObservableObject {
             return
         }
 
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: realmClip.dataPath) as? CPYClipData,
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: realmClip.dataPath),
               let image = data.image else { return }
         isRunningOCR = true
         ocrText = nil
@@ -389,7 +389,7 @@ class ClipSearchViewModel: ObservableObject {
         guard let clip = selectedClip() else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: realmClip.dataPath) as? CPYClipData,
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: realmClip.dataPath),
               let image = data.image else { return }
         let picker = NSSharingServicePicker(items: [image])
         picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
@@ -399,7 +399,7 @@ class ClipSearchViewModel: ObservableObject {
         guard let clip = selectedClip(), clip.pasteboardType.isTIFFType() else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: realmClip.dataPath) as? CPYClipData,
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: realmClip.dataPath),
               let image = data.image else { return }
         guard let view = ClipSearchWindowController.shared.window?.contentView else { return }
         let picker = NSSharingServicePicker(items: [image])
@@ -828,7 +828,7 @@ struct ClipSearchPanelView: View {
     static func loadFullImage(for clip: ClipItemViewModel) -> NSImage? {
         guard let realm = Realm.safeInstance() else { return nil }
         guard let realmClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return nil }
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: realmClip.dataPath) as? CPYClipData,
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: realmClip.dataPath),
               let image = data.image else { return nil }
         return image
     }

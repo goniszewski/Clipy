@@ -21,6 +21,7 @@ final class ClipService {
 
     // MARK: - Properties
     private var cachedChangeCount: Int = 0
+    private var latestClipUpdateTime: Int?
     private var storeTypes = [String: NSNumber]()
     private let lock = NSRecursiveLock(name: "com.clipy-app.Clipy.ClipUpdatable")
     private var monitorTask: Task<Void, Never>?
@@ -122,6 +123,19 @@ final class ClipService {
     func incrementChangeCount() {
         cachedChangeCount += 1
     }
+
+    func markPasted(_ clip: CPYClip) {
+        guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting) else { return }
+        guard let realm = Realm.safeInstance() else { return }
+        guard let managedClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
+
+        let now = Int(Date().timeIntervalSince1970)
+        let nextUpdateTime = reserveNextUpdateTime(in: realm, now: now)
+
+        realm.transaction {
+            managedClip.updateTime = nextUpdateTime
+        }
+    }
 }
 
 // MARK: - Create Clip
@@ -173,7 +187,7 @@ extension ClipService {
         let existingIsPinned = realm.object(ofType: CPYClip.self, forPrimaryKey: "\(savedHash)")?.isPinned ?? false
 
         // Saved time and path
-        let unixTime = Int(Date().timeIntervalSince1970)
+        let unixTime = reserveNextUpdateTime(in: realm, now: Int(Date().timeIntervalSince1970))
         let savedPath = CPYUtilities.applicationSupportFolder() + "/\(NSUUID().uuidString).data"
         // Create Realm object
         let clip = CPYClip()
@@ -198,7 +212,7 @@ extension ClipService {
             // Save Realm and .data file
             guard let dispatchRealm = Realm.safeInstance() else { return }
             if CPYUtilities.prepareSaveToPath(CPYUtilities.applicationSupportFolder()) {
-                if NSKeyedArchiver.archiveRootObject(data, toFile: savedPath) {
+                if ArchiveCompatibility.archiveRootObject(data, toFile: savedPath) {
                     dispatchRealm.transaction {
                         dispatchRealm.add(clip, update: .all)
                     }
@@ -220,6 +234,18 @@ extension ClipService {
         guard let value = dictionary[type] else { return false }
         guard let number = storeTypes[value] else { return false }
         return number.boolValue
+    }
+
+    private func reserveNextUpdateTime(in realm: Realm, now: Int) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let currentLatestUpdateTime = latestClipUpdateTime
+            ?? (realm.objects(CPYClip.self).max(ofProperty: #keyPath(CPYClip.updateTime)) as Int?)
+            ?? (now - 1)
+        let nextUpdateTime = max(now, currentLatestUpdateTime + 1)
+        latestClipUpdateTime = nextUpdateTime
+        return nextUpdateTime
     }
 }
 

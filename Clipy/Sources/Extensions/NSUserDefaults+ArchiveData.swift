@@ -25,12 +25,6 @@ extension UserDefaults {
 
     func archiveDataForKey<T: NSObject & NSCoding>(_: T.Type, key: String) -> T? {
         guard let data = object(forKey: key) as? Data else { return nil }
-        do {
-            let obj = try NSKeyedUnarchiver.unarchivedObject(ofClass: T.self, from: data)
-            return obj
-        } catch {
-            // Fallback to legacy unarchiver for backward compatibility
-            return NSKeyedUnarchiver.unarchiveObject(with: data) as? T
-        }
+        return ArchiveCompatibility.unarchiveObject(with: data)
     }
 }

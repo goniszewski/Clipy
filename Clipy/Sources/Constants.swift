@@ -14,12 +14,35 @@ import Foundation
 struct Constants {
 
     struct Application {
+        static let releaseName = "Clipy Classic"
+        static let debugName = "Clipy Classic Dev"
+        static let githubOwner = "goniszewski"
+        static let githubRepository = "Clipy"
+        static let githubRepositorySlug = "\(githubOwner)/\(githubRepository)"
+        static let maintainerName = "Robert Goniszewski"
+        static let maintainerHandle = "@\(githubOwner)"
         #if DEBUG
-            static let name = "Clipy Dev"
+            static let name = debugName
         #else
-            static let name = "Clipy"
+            static let name = releaseName
         #endif
-        static let appcastURL = URL(string: "https://clipy-app.com/appcast.xml")!
+        static let settingsTitle = "\(name) Settings"
+        static let releaseSettingsTitle = "\(releaseName) Settings"
+        static let snippetEditorTitle = "\(name) Snippets"
+        static let releaseSnippetEditorTitle = "\(releaseName) Snippets"
+        static let aboutTagline = "A modern reimplementation of the original Clipy clipboard manager for macOS."
+        static let aboutLineage = """
+        Original app: Clipy by Naotaka Morimoto and the Clipy Project.
+        Modern fork foundation: Jean Luc Iradukunda.
+        Current maintainer: \(maintainerName) (\(maintainerHandle)).
+        """
+        static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nCurrent fork maintenance © 2026 \(maintainerName)."
+        static let repositoryURL = URL(string: "https://github.com/\(githubRepositorySlug)")!
+        static let appcastURL = URL(string: "https://\(githubOwner).github.io/\(githubRepository)/appcast.xml")!
+        static let releasesURL = URL(string: "https://github.com/\(githubRepositorySlug)/releases")!
+        static let issuesURL = URL(string: "https://github.com/\(githubRepositorySlug)/issues")!
+        static let discussionsURL = URL(string: "https://github.com/\(githubRepositorySlug)/discussions")!
+        static let changelogURL = URL(string: "https://github.com/\(githubRepositorySlug)/blob/main/CHANGELOG.md")!
         static let supportDirectoryName = "ClipyDev"
     }
 
@@ -82,8 +105,9 @@ struct Constants {
     }
 
     struct Update {
-        static let enableAutomaticCheck = "kCPYEnableAutomaticCheckKey"
-        static let checkInterval = "kCPYUpdateCheckIntervalKey"
+        static let enableAutomaticCheck = "SUEnableAutomaticChecks"
+        static let checkInterval = "SUScheduledCheckInterval"
+        static let automaticallyUpdate = "SUAutomaticallyUpdate"
     }
 
     struct Notification {

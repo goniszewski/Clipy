@@ -56,24 +56,28 @@ final class PasteService {
 extension PasteService {
     func paste(with clip: CPYClip) {
         guard !clip.isInvalidated else { return }
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: clip.dataPath) as? CPYClipData else { return }
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: clip.dataPath) else { return }
 
         let isPastePlainText = self.isPastePlainText
         let isPasteAndDeleteHistory = self.isPasteAndDeleteHistory
         let isDeleteHistory = self.isDeleteHistory
         guard isPastePlainText || isPasteAndDeleteHistory || isDeleteHistory else {
+            // We are writing a known history item back to the pasteboard intentionally.
+            // Skip re-capturing that change and reorder history explicitly instead.
+            AppEnvironment.current.clipService.incrementChangeCount()
+            AppEnvironment.current.clipService.markPasted(clip)
             copyToPasteboard(with: clip)
             paste()
             return
         }
 
-        if isPasteAndDeleteHistory {
-            AppEnvironment.current.clipService.incrementChangeCount()
-        }
         if isPastePlainText {
+            AppEnvironment.current.clipService.incrementChangeCount()
+            AppEnvironment.current.clipService.markPasted(clip)
             copyToPasteboard(with: data.stringValue)
             paste()
         } else if isPasteAndDeleteHistory {
+            AppEnvironment.current.clipService.incrementChangeCount()
             copyToPasteboard(with: clip)
             paste()
         }
@@ -93,7 +97,7 @@ extension PasteService {
     func copyToPasteboard(with clip: CPYClip) {
         lock.lock(); defer { lock.unlock() }
 
-        guard let data = NSKeyedUnarchiver.unarchiveObject(withFile: clip.dataPath) as? CPYClipData else { return }
+        guard let data: CPYClipData = ArchiveCompatibility.unarchiveObject(withFile: clip.dataPath) else { return }
 
         if isPastePlainText {
             copyToPasteboard(with: data.stringValue)
@@ -101,7 +105,19 @@ extension PasteService {
         }
 
         let pasteboard = NSPasteboard.general
-        let types = data.types
+        let types = Array(NSOrderedSet(array: data.types.map(\.normalized)).array as? [NSPasteboard.PasteboardType] ?? data.types)
+
+        if types.contains(where: { $0.isTIFFType() }), let image = data.image {
+            pasteboard.clearContents()
+            _ = pasteboard.writeObjects([image])
+
+            // Keep TIFF data available explicitly for apps that still read the raw type.
+            if let imageData = image.tiffRepresentation {
+                pasteboard.setData(imageData, forType: .clipyTIFF)
+            }
+            return
+        }
+
         pasteboard.declareTypes(types, owner: nil)
         types.forEach { type in
             if type.isStringType() {
@@ -121,9 +137,6 @@ extension PasteService {
             } else if type.isURLType() {
                 let url = data.URLs
                 pasteboard.setPropertyList(url, forType: type)
-            } else if type.isTIFFType() {
-                guard let image = data.image, let imageData = image.tiffRepresentation else { return }
-                pasteboard.setData(imageData, forType: type)
             }
         }
     }
@@ -134,16 +147,15 @@ extension PasteService {
     func paste() {
         guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.inputPasteCommand) else { return }
 
-        // If accessibility isn't granted, the content is already on the clipboard —
-        // the user can ⌘V manually. Don't block with an alert on every paste.
+        // If accessibility isn't granted, the content is already on the clipboard.
+        // Prompt once per session when the user actually tries to paste.
         guard AppEnvironment.current.accessibilityService.isAccessibilityEnabled(isPrompt: false) else {
-            // Silently skip the simulated ⌘V — clipboard already has the content.
-            // Only prompt once at launch (handled in AppDelegate.applicationDidFinishLaunching).
+            AppEnvironment.current.accessibilityService.showAccessibilityAuthenticationAlert()
             return
         }
 
         let vKeyCode = Sauce.shared.keyCode(by: .v)
-        DispatchQueue.main.async {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             let source = CGEventSource(stateID: .combinedSessionState)
             source?.setLocalEventsFilterDuringSuppressionState([.permitLocalMouseEvents, .permitSystemDefinedEvents], state: .eventSuppressionStateSuppressionInterval)
             let keyVDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true)
