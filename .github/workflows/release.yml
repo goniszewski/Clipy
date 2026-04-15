@@ -266,8 +266,8 @@ jobs:
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          ./Pods/Sparkle/bin/generate_appcast \
-            -s "$SPARKLE_PRIVATE_KEY" \
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | ./Pods/Sparkle/bin/generate_appcast \
+            --ed-key-file - \
             -o "${{ runner.temp }}/sparkle-artifacts/appcast.xml" \
             --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/" \
             "${{ runner.temp }}/sparkle-artifacts"
