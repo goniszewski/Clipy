@@ -26,7 +26,7 @@
 2. Open the DMG and drag Clipy to Applications
 3. Launch Clipy — it appears in your menu bar
 
-> Release DMGs are intended to be Developer ID-signed and notarized once Apple signing credentials are configured.
+> Current GitHub releases may be unsigned and unnotarized until Apple signing credentials are configured. If macOS blocks Clipy, use the Gatekeeper bypass steps below.
 
 ### Gatekeeper Bypass for Unsigned Builds
 
@@ -103,6 +103,8 @@ One-time GitHub setup:
    rm /tmp/clipy-sparkle-private-key
    ```
 3. Add the Apple signing and notarization secrets listed above
+
+If those Apple secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
 
 ### Uninstall
 
