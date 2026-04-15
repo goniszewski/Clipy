@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(CLIPY_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
@@ -13,8 +15,6 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(CLIPY_DISPLAY_NAME)</string>
-	<key>CFBundleDisplayName</key>
 	<string>$(CLIPY_DISPLAY_NAME)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
@@ -41,7 +41,7 @@
 	<key>SUFeedURL</key>
 	<string>https://goniszewski.github.io/Clipy/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>y194aDQeEJo1Reo6MECW4lFmCbTXiJi++nW/7KOYkVU=</string>
+	<string>fwrBDOjQYy+InTwRwtyp730uPLt04hMDWIwiju3tyEI=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 </dict>
