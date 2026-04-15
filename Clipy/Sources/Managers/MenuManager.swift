@@ -250,7 +250,9 @@ private extension MenuManager {
         clipMenu?.addItem(prefItem)
 
         clipMenu?.addItem(NSMenuItem.separator())
-        clipMenu?.addItem(NSMenuItem(title: L10n.quitClipy, action: #selector(AppDelegate.terminate), keyEquivalent: "q"))
+        let quitItem = NSMenuItem(title: "Quit \(Constants.Application.name)", action: #selector(AppDelegate.terminate), keyEquivalent: "q")
+        quitItem.target = NSApp.delegate
+        clipMenu?.addItem(quitItem)
 
         statusItem?.menu = clipMenu
     }
@@ -592,7 +594,7 @@ private extension MenuManager {
             devLabel.sizeToFit()
             devLabel.frame.origin = CGPoint(x: 20, y: 2)
             button.addSubview(devLabel)
-            button.toolTip = "Clipy Dev \(Bundle.main.appVersion ?? "") (Debug Build)"
+            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion ?? "") (Debug Build)"
         }
         #else
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

@@ -14,11 +14,22 @@ import Foundation
 struct Constants {
 
     struct Application {
+        static let releaseName = "Clipy Classic"
+        static let debugName = "Clipy Classic Dev"
         #if DEBUG
-            static let name = "Clipy Dev"
+            static let name = debugName
         #else
-            static let name = "Clipy"
+            static let name = releaseName
         #endif
+        static let settingsTitle = "\(name) Settings"
+        static let releaseSettingsTitle = "\(releaseName) Settings"
+        static let snippetEditorTitle = "\(name) Snippets"
+        static let releaseSnippetEditorTitle = "\(releaseName) Snippets"
+        static let aboutCredits = """
+        Original app: Clipy by Naotaka Morimoto and the Clipy Project.
+        Modern fork this build is based on: Jean Luc Iradukunda.
+        """
+        static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nFork work © 2024-2026 Jean Luc Iradukunda."
         static let appcastURL = URL(string: "https://clipy-app.com/appcast.xml")!
         static let supportDirectoryName = "ClipyDev"
     }

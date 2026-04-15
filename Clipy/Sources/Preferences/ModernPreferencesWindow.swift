@@ -11,6 +11,11 @@ import Cocoa
 import TipKit
 import RealmSwift
 
+private enum ModernPreferencesLayout {
+    static let windowWidth: CGFloat = 640
+    static let windowHeight: CGFloat = 560
+}
+
 // MARK: - Preferences Tab
 enum PreferenceTab: String, Identifiable {
     case general = "General"
@@ -109,7 +114,7 @@ struct ModernPreferencesView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 600, height: 440)
+        .frame(width: ModernPreferencesLayout.windowWidth, height: ModernPreferencesLayout.windowHeight)
         .onChange(of: devMode) { _, enabled in
             if !enabled && selectedTab == .developer {
                 selectedTab = .general
@@ -1618,16 +1623,17 @@ class ModernPreferencesWindowController: NSWindowController {
 
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 440),
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: ModernPreferencesLayout.windowWidth,
+                height: ModernPreferencesLayout.windowHeight
+            ),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: true
         )
-        #if DEBUG
-        window.title = "Clipy Dev Settings"
-        #else
-        window.title = "Clipy Settings"
-        #endif
+        window.title = Constants.Application.settingsTitle
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = false
         window.center()

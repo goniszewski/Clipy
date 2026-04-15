@@ -134,16 +134,15 @@ extension PasteService {
     func paste() {
         guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.inputPasteCommand) else { return }
 
-        // If accessibility isn't granted, the content is already on the clipboard —
-        // the user can ⌘V manually. Don't block with an alert on every paste.
+        // If accessibility isn't granted, the content is already on the clipboard.
+        // Prompt once per session when the user actually tries to paste.
         guard AppEnvironment.current.accessibilityService.isAccessibilityEnabled(isPrompt: false) else {
-            // Silently skip the simulated ⌘V — clipboard already has the content.
-            // Only prompt once at launch (handled in AppDelegate.applicationDidFinishLaunching).
+            AppEnvironment.current.accessibilityService.showAccessibilityAuthenticationAlert()
             return
         }
 
         let vKeyCode = Sauce.shared.keyCode(by: .v)
-        DispatchQueue.main.async {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             let source = CGEventSource(stateID: .combinedSessionState)
             source?.setLocalEventsFilterDuringSuppressionState([.permitLocalMouseEvents, .permitSystemDefinedEvents], state: .eventSuppressionStateSuppressionInterval)
             let keyVDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true)

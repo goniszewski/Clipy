@@ -56,6 +56,7 @@ final class CPYPreferencesWindowController: NSWindowController {
         self.window?.collectionBehavior = .canJoinAllSpaces
         self.window?.backgroundColor = NSColor(white: 0.99, alpha: 1)
         self.window?.titlebarAppearsTransparent = true
+        self.window?.title = Constants.Application.settingsTitle
         toolBarItemTapped(generalButton)
         generalButton.sendAction(on: .leftMouseDown)
         menuButton.sendAction(on: .leftMouseDown)

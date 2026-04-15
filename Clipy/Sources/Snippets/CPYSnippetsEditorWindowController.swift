@@ -63,6 +63,7 @@ final class CPYSnippetsEditorWindowController: NSWindowController {
         self.window?.collectionBehavior = NSWindow.CollectionBehavior.canJoinAllSpaces
         self.window?.backgroundColor = NSColor(white: 0.99, alpha: 1)
         self.window?.titlebarAppearsTransparent = true
+        self.window?.title = Constants.Application.snippetEditorTitle
         guard let realm = Realm.safeInstance() else { return }
         folders = realm.objects(CPYFolder.self)
                     .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
