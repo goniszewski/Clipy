@@ -96,13 +96,18 @@ Required GitHub Actions secrets:
 One-time GitHub setup:
 
 1. Enable GitHub Pages for this repository with source `main` and folder `/docs`
-2. Export the Sparkle private key from your login keychain:
+2. Bootstrap the Sparkle keypair, update `SUPublicEDKey`, and store the private key as a GitHub secret:
+   ```bash
+   ./scripts/bootstrap-sparkle-key.sh
+   ```
+   This uses a repo-specific Sparkle keychain account by default and updates `SPARKLE_PRIVATE_KEY` on the current GitHub repo.
+3. If you prefer the manual flow, export the Sparkle private key from your login keychain:
    ```bash
    ./Pods/Sparkle/bin/generate_keys -x /tmp/clipy-sparkle-private-key
    gh secret set SPARKLE_PRIVATE_KEY < /tmp/clipy-sparkle-private-key
    rm /tmp/clipy-sparkle-private-key
    ```
-3. Add the Apple signing and notarization secrets listed above
+4. Add the Apple signing and notarization secrets listed above
 
 If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
 
