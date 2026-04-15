@@ -55,6 +55,7 @@ final class MenuManager: NSObject {
         bind()
     }
 
+    @MainActor
     func refresh() {
         createClipMenu()
     }
@@ -66,6 +67,7 @@ final class MenuManager: NSObject {
 
 // MARK: - Popup Menu
 extension MenuManager {
+    @MainActor
     func popUpMenu(_ type: MenuType) {
         let menu: NSMenu?
         switch type {
@@ -79,12 +81,15 @@ extension MenuManager {
         menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
+    @MainActor
     func popUpSnippetFolder(_ folder: CPYFolder) {
         if folder.isVault && !isVaultUnlocked(folder.identifier) {
             authenticateVault(folderID: folder.identifier, title: folder.title) { [weak self] success in
                 guard success else { return }
-                self?.refresh()
-                self?.popUpSnippetFolder(folder)
+                Task { @MainActor [weak self] in
+                    self?.refresh()
+                    self?.popUpSnippetFolder(folder)
+                }
             }
             return
         }
@@ -101,10 +106,11 @@ extension MenuManager {
                 let subMenuItem = makeSnippetMenuItem(snippet, listNumber: index)
                 folderMenu.addItem(subMenuItem)
                 index += 1
-            }
+        }
         folderMenu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
+    @MainActor
     @objc func selectClipMenuItem(_ sender: NSMenuItem) {
         guard let primaryKey = sender.representedObject as? String else {
             NSSound.beep()
@@ -119,6 +125,7 @@ extension MenuManager {
         AppEnvironment.current.pasteService.paste(with: clip)
     }
 
+    @MainActor
     @objc func selectSnippetMenuItem(_ sender: NSMenuItem) {
         guard let primaryKey = sender.representedObject as? String else {
             NSSound.beep()
@@ -137,19 +144,16 @@ extension MenuManager {
 }
 
 // MARK: - Vault Helpers
+@MainActor
 private extension MenuManager {
     func isVaultUnlocked(_ folderID: String) -> Bool {
-        MainActor.assumeIsolated {
-            VaultAuthService.shared.isUnlocked(folderID)
-        }
+        VaultAuthService.shared.isUnlocked(folderID)
     }
 
     func authenticateVault(folderID: String, title: String, completion: @escaping (Bool) -> Void) {
-        MainActor.assumeIsolated {
-            VaultAuthService.shared.authenticate(folderID: folderID, reason: "Unlock \"\(title)\" vault") { success in
-                DispatchQueue.main.async {
-                    completion(success)
-                }
+        VaultAuthService.shared.authenticate(folderID: folderID, reason: "Unlock \"\(title)\" vault") { success in
+            DispatchQueue.main.async {
+                completion(success)
             }
         }
     }
@@ -163,13 +167,13 @@ private extension MenuManager {
         // Realm Notifications
         clipToken = realm.objects(CPYClip.self)
                         .observe { [weak self] _ in
-                            DispatchQueue.main.async { [weak self] in
+                            Task { @MainActor [weak self] in
                                 self?.createClipMenu()
                             }
                         }
         snippetToken = realm.objects(CPYFolder.self)
                         .observe { [weak self] _ in
-                            DispatchQueue.main.async { [weak self] in
+                            Task { @MainActor [weak self] in
                                 self?.createClipMenu()
                             }
                         }
@@ -190,7 +194,9 @@ private extension MenuManager {
         defaults.publisher(for: \.clipyReorderClips)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
 
@@ -199,7 +205,9 @@ private extension MenuManager {
             .publisher(for: Notification.Name(rawValue: Constants.Notification.closeSnippetEditor))
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
 
@@ -229,7 +237,9 @@ private extension MenuManager {
         Publishers.MergeMany(publishers)
             .throttle(for: .seconds(1), scheduler: DispatchQueue.main, latest: true)
             .sink { [weak self] _ in
-                self?.createClipMenu()
+                Task { @MainActor [weak self] in
+                    self?.createClipMenu()
+                }
             }
             .store(in: &cancellables)
     }
@@ -237,6 +247,7 @@ private extension MenuManager {
 
 // MARK: - Menus
 private extension MenuManager {
+    @MainActor
      func createClipMenu() {
         clipMenu = NSMenu(title: Constants.Application.name)
         historyMenu = NSMenu(title: Constants.Menu.history)
@@ -510,6 +521,7 @@ private extension MenuManager {
 
 // MARK: - Snippets
 private extension MenuManager {
+    @MainActor
     func addSnippetItems(_ menu: NSMenu, separateMenu: Bool) {
         guard let realm = realm else { return }
         let folderResults = realm.objects(CPYFolder.self).sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)

@@ -9,7 +9,8 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ### Changed
 - Switched the app and release train to calendar-based versioning (`YY.M.patch`)
-- Unified update checks around GitHub Releases and numeric release comparison
+- Switched auto-updates to Sparkle 2 using a GitHub Pages-hosted appcast and signed update archives
+- GitHub Releases now host the signed update downloads instead of acting as the update check source
 
 ## [26.3.0] - 2026-03-19
 
