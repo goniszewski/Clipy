@@ -246,8 +246,8 @@ extension HotKeyService {
     }
 
     fileprivate func setupSnippetHotKeys() {
-        folderKeyCombos?.forEach {
-            let hotKey = HotKey(identifier: $0, keyCombo: $1, target: self, action: #selector(HotKeyService.popupSnippetFolder(_:)))
+        folderKeyCombos?.forEach { entry in
+            let hotKey = HotKey(identifier: entry.key, keyCombo: entry.value, target: self, action: #selector(HotKeyService.popupSnippetFolder(_:)))
             hotKey.register()
         }
     }

@@ -1203,7 +1203,7 @@ struct ExcludedAppsPreferencesView: View {
 
 // MARK: - Updates Preferences
 struct UpdatesPreferencesView: View {
-    @StateObject private var updaterDriver = SparkleUpdaterDriver.shared
+    @ObservedObject private var updaterDriver = SparkleUpdaterDriver.shared
 
     private let displayedVersion = Bundle.main.appDisplayVersion
 
@@ -1237,7 +1237,7 @@ struct UpdatesPreferencesView: View {
                 }
 
                 HStack {
-                    Text("Auto-install")
+                    Text("Automatic updates")
                     Spacer()
                     Text(updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled")
                         .font(.system(size: 11, design: .monospaced))
