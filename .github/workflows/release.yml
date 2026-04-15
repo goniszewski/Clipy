@@ -59,6 +59,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_APP_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           missing=()
           for secret_name in \
@@ -77,6 +78,13 @@ jobs:
           else
             echo "apple_signing_enabled=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Unsigned release::Missing Apple signing secrets: ${missing[*]}. Building unsigned, unnotarized artifacts that require the documented Gatekeeper bypass."
+          fi
+
+          if [ -n "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "sparkle_appcast_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sparkle_appcast_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Manual-only release::SPARKLE_PRIVATE_KEY is missing or empty. Skipping appcast generation and publishing a manual-download release only."
           fi
 
       - name: Import signing certificate
@@ -254,6 +262,7 @@ jobs:
           xcrun stapler staple "$DMG_PATH"
 
       - name: Generate Sparkle appcast
+        if: steps.release_mode.outputs.sparkle_appcast_enabled == 'true'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -267,7 +276,7 @@ jobs:
         run: |
           RELEASE_NOTES_PATH="${{ runner.temp }}/release-notes.md"
 
-          if [ "${{ steps.release_mode.outputs.apple_signing_enabled }}" = "true" ]; then
+          if [ "${{ steps.release_mode.outputs.apple_signing_enabled }}" = "true" ] && [ "${{ steps.release_mode.outputs.sparkle_appcast_enabled }}" = "true" ]; then
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
@@ -279,6 +288,20 @@ jobs:
           3. Launch Clipy — it appears in your menu bar
 
           **Signed, notarized, and Sparkle-enabled.** Requires macOS 14.0 Sonoma or later.
+          EOF
+          elif [ "${{ steps.release_mode.outputs.sparkle_appcast_enabled }}" = "true" ]; then
+            cat > "$RELEASE_NOTES_PATH" <<EOF
+          ## Clipy v${{ steps.version.outputs.VERSION }}
+
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+          ### Install
+          1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
+          2. Open the DMG and drag Clipy to Applications
+          3. If macOS blocks the app on first launch, open \`Applications\`, Control-click \`Clipy.app\`, then choose \`Open\`
+          4. If needed, go to \`System Settings\` -> \`Privacy & Security\` and click \`Open Anyway\`
+
+          **Unsigned, unnotarized release.** This build uses the documented Gatekeeper bypass flow on first launch. Sparkle update metadata is still published for this release.
           EOF
           else
             cat > "$RELEASE_NOTES_PATH" <<EOF
@@ -292,7 +315,7 @@ jobs:
           3. If macOS blocks the app on first launch, open \`Applications\`, Control-click \`Clipy.app\`, then choose \`Open\`
           4. If needed, go to \`System Settings\` -> \`Privacy & Security\` and click \`Open Anyway\`
 
-          **Unsigned, unnotarized release.** This build uses the documented Gatekeeper bypass flow on first launch. Sparkle update metadata is still published for this release.
+          **Unsigned, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are unavailable until \`SPARKLE_PRIVATE_KEY\` is configured and appcast publishing is re-enabled.
           EOF
           fi
 
@@ -309,6 +332,7 @@ jobs:
           prerelease: false
 
       - name: Publish appcast to docs
+        if: steps.release_mode.outputs.sparkle_appcast_enabled == 'true'
         run: |
           git fetch origin main
           git switch -C release-docs origin/main

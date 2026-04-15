@@ -65,7 +65,7 @@ For example, the release cycle started on April 15, 2026 is `26.4.0`.
 
 ### Updating
 
-**Auto-update:** Preferences → Updates → **Check for Updates**. Sparkle handles signed update checks, download, install, and relaunch.
+**Auto-update:** Preferences → Updates → **Check for Updates**. This is available only when the release workflow has a valid Sparkle private key and publishes an appcast.
 
 **Manual:** Download the latest DMG, drag to Applications (replace existing), and launch.
 
@@ -77,7 +77,7 @@ If Gatekeeper blocks the app, follow the unsigned-build bypass steps above.
 
 Clipy's auto-update pipeline uses Sparkle with GitHub-hosted artifacts:
 
-- `docs/appcast.xml` is published via GitHub Pages at `https://goniszewski.github.io/Clipy/appcast.xml`
+- `docs/appcast.xml` is published via GitHub Pages at `https://goniszewski.github.io/Clipy/appcast.xml` when `SPARKLE_PRIVATE_KEY` is configured
 - Sparkle `.zip` update archives are uploaded to GitHub Releases
 - `.dmg` archives are uploaded to GitHub Releases for manual installs
 - full trust on other Macs requires Developer ID signing and notarization
@@ -104,7 +104,9 @@ One-time GitHub setup:
    ```
 3. Add the Apple signing and notarization secrets listed above
 
-If those Apple secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
+If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
+
+If `SPARKLE_PRIVATE_KEY` is missing or empty, the Release workflow skips appcast generation and publishes a manual-download release only.
 
 ### Uninstall
 
