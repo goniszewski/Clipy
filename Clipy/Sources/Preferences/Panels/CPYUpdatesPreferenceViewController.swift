@@ -20,7 +20,7 @@ class CPYUpdatesPreferenceViewController: NSViewController {
     // MARK: - Initialize
     override func loadView() {
         super.loadView()
-        versionTextField.stringValue = "v\(Bundle.main.appVersion ?? "")"
+        versionTextField.stringValue = "v\(Bundle.main.appVersion)"
     }
 
 }

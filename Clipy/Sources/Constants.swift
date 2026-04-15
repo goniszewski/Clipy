@@ -16,6 +16,9 @@ struct Constants {
     struct Application {
         static let releaseName = "Clipy Classic"
         static let debugName = "Clipy Classic Dev"
+        static let githubOwner = "goniszewski"
+        static let githubRepository = "Clipy"
+        static let githubRepositorySlug = "\(githubOwner)/\(githubRepository)"
         #if DEBUG
             static let name = debugName
         #else
@@ -30,7 +33,8 @@ struct Constants {
         Modern fork this build is based on: Jean Luc Iradukunda.
         """
         static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nFork work © 2024-2026 Jean Luc Iradukunda."
-        static let appcastURL = URL(string: "https://clipy-app.com/appcast.xml")!
+        static let appcastURL = URL(string: "https://\(githubOwner).github.io/\(githubRepository)/appcast.xml")!
+        static let releasesURL = URL(string: "https://github.com/\(githubRepositorySlug)/releases")!
         static let supportDirectoryName = "ClipyDev"
     }
 
@@ -93,8 +97,9 @@ struct Constants {
     }
 
     struct Update {
-        static let enableAutomaticCheck = "kCPYEnableAutomaticCheckKey"
-        static let checkInterval = "kCPYUpdateCheckIntervalKey"
+        static let enableAutomaticCheck = "SUEnableAutomaticChecks"
+        static let checkInterval = "SUScheduledCheckInterval"
+        static let automaticallyUpdate = "SUAutomaticallyUpdate"
     }
 
     struct Notification {

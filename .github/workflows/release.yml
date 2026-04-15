@@ -1,16 +1,13 @@
 name: Release
 
 on:
-  # Triggered automatically when you create a tag via GitHub UI (Releases → Draft new release)
   push:
     tags:
       - 'v*'
-
-  # Or trigger manually from Actions tab → Release → Run workflow
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 2.0.0)'
+        description: 'Version to release (for example: 26.4.0)'
         required: true
         type: string
 
@@ -21,8 +18,11 @@ jobs:
   build-and-release:
     environment: production
     runs-on: macos-15
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
@@ -31,18 +31,12 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "VERSION=${{ inputs.version }}" >> $GITHUB_OUTPUT
-            echo "TAG=v${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "TAG=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
-            echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Create tag (if manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: git tag "v${{ inputs.version }}"
-        # Tag is created locally for the release action — NOT pushed
-        # to avoid triggering a duplicate run via the push:tags trigger
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
@@ -53,32 +47,24 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          gem install cocoapods
-          pod install
+          brew install cocoapods || brew upgrade cocoapods
+          export PATH="$(brew --prefix)/bin:$PATH"
+          pod install --repo-update
 
-      - name: Set version in Info.plist
-        run: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.VERSION }}" "Clipy/Supporting Files/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.VERSION }}" "Clipy/Supporting Files/Info.plist"
-
-      # ---------- Code Signing Setup ----------
       - name: Import signing certificate
         env:
           CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
         run: |
-          # Decode certificate
-          CERTIFICATE_PATH=${{ runner.temp }}/certificate.p12
+          CERTIFICATE_PATH="${{ runner.temp }}/certificate.p12"
           printf '%s' "$CERTIFICATE_BASE64" | base64 -D > "$CERTIFICATE_PATH"
 
-          # Create temporary keychain
-          KEYCHAIN_PATH=${{ runner.temp }}/signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          KEYCHAIN_PATH="${{ runner.temp }}/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # Import certificate and private key as an identity
           security import "$CERTIFICATE_PATH" \
             -P "$CERTIFICATE_PASSWORD" \
             -A \
@@ -86,29 +72,27 @@ jobs:
             -f pkcs12 \
             -k "$KEYCHAIN_PATH"
 
-          # Allow codesign to access the keychain
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Add to search list
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
 
-      # ---------- Build & Sign ----------
       - name: Archive
         run: |
           xcodebuild \
             -workspace Clipy.xcworkspace \
             -scheme Clipy \
             -configuration Release \
-            -archivePath ${{ runner.temp }}/Clipy.xcarchive \
+            -archivePath "${{ runner.temp }}/Clipy.xcarchive" \
+            MARKETING_VERSION="${{ steps.version.outputs.VERSION }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.version.outputs.VERSION }}" \
             CODE_SIGN_IDENTITY="Developer ID Application" \
-            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             CODE_SIGN_STYLE=Manual \
             OTHER_CODE_SIGN_FLAGS="--options runtime" \
             archive
 
       - name: Export app
         run: |
-          mkdir -p ${{ runner.temp }}/export
+          mkdir -p "${{ runner.temp }}/export"
           cp -R "${{ runner.temp }}/Clipy.xcarchive/Products/Applications/Clipy.app" \
             "${{ runner.temp }}/export/Clipy.app"
 
@@ -117,8 +101,6 @@ jobs:
           APP_PATH="${{ runner.temp }}/export/Clipy.app"
           SIGN_ID="Developer ID Application"
 
-          # Create entitlements file that strips com.apple.security.get-task-allow
-          # (debug entitlement that Apple rejects during notarization)
           cat > "${{ runner.temp }}/release.entitlements" << 'ENTITLEMENTS'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -130,53 +112,59 @@ jobs:
           </plist>
           ENTITLEMENTS
 
-          # Sign every Mach-O binary inside the app bundle (innermost first)
-          # This catches nested .app bundles like Sparkle's Autoupdate.app
-          find "$APP_PATH" -type f -print0 2>/dev/null | while IFS= read -r -d '' f; do
-            # Check if it's a Mach-O binary
-            if file "$f" | grep -q "Mach-O"; then
-              echo "Signing: ${f#$APP_PATH/}"
+          find "$APP_PATH" -type f -print0 2>/dev/null | while IFS= read -r -d '' file; do
+            if file "$file" | grep -q "Mach-O"; then
               codesign --force --options runtime --timestamp \
                 --entitlements "${{ runner.temp }}/release.entitlements" \
-                --sign "$SIGN_ID" "$f"
+                --sign "$SIGN_ID" "$file"
             fi
           done
 
-          # Sign all .app bundles inside frameworks (e.g., Sparkle's Autoupdate.app)
           find "$APP_PATH/Contents/Frameworks" -name "*.app" -type d -print0 2>/dev/null | while IFS= read -r -d '' app; do
-            echo "Signing bundle: ${app#$APP_PATH/}"
             codesign --force --deep --options runtime --timestamp \
               --entitlements "${{ runner.temp }}/release.entitlements" \
               --sign "$SIGN_ID" "$app"
           done
 
-          # Sign all frameworks
-          find "$APP_PATH/Contents/Frameworks" -name "*.framework" -type d -print0 2>/dev/null | while IFS= read -r -d '' fw; do
-            echo "Signing framework: ${fw#$APP_PATH/}"
+          find "$APP_PATH/Contents/Frameworks" -name "*.framework" -type d -print0 2>/dev/null | while IFS= read -r -d '' framework; do
             codesign --force --deep --options runtime --timestamp \
-              --sign "$SIGN_ID" "$fw"
+              --sign "$SIGN_ID" "$framework"
           done
 
-          # Sign any loose dylibs
-          find "$APP_PATH" -name "*.dylib" -type f -print0 2>/dev/null | while IFS= read -r -d '' lib; do
-            echo "Signing dylib: ${lib#$APP_PATH/}"
+          find "$APP_PATH" -name "*.dylib" -type f -print0 2>/dev/null | while IFS= read -r -d '' dylib; do
             codesign --force --options runtime --timestamp \
-              --sign "$SIGN_ID" "$lib"
+              --sign "$SIGN_ID" "$dylib"
           done
 
-          # Re-sign the main app bundle last
           codesign --force --deep --options runtime --timestamp \
             --entitlements "${{ runner.temp }}/release.entitlements" \
             --sign "$SIGN_ID" "$APP_PATH"
 
-          echo "✅ All binaries signed"
-
       - name: Verify signature
         run: |
           codesign --verify --deep --strict --verbose=2 "${{ runner.temp }}/export/Clipy.app"
-          echo "✅ Code signature verified"
 
-      # ---------- Notarization ----------
+      - name: Notarize and staple app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_PATH="${{ runner.temp }}/export/Clipy.app"
+          xcrun notarytool submit "$APP_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$APP_PATH"
+
+      - name: Create Sparkle ZIP
+        run: |
+          mkdir -p "${{ runner.temp }}/sparkle-artifacts"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "${{ runner.temp }}/export/Clipy.app" \
+            "${{ runner.temp }}/sparkle-artifacts/Clipy-${{ steps.version.outputs.VERSION }}.zip"
+
       - name: Create DMG
         run: |
           brew install create-dmg || true
@@ -192,7 +180,6 @@ jobs:
             "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg" \
             "${{ runner.temp }}/export/" || true
 
-          # Fallback to hdiutil if create-dmg fails
           if [ ! -f "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg" ]; then
             hdiutil create \
               -volname "Clipy ${{ steps.version.outputs.VERSION }}" \
@@ -201,13 +188,7 @@ jobs:
               "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg"
           fi
 
-      - name: Sign DMG
-        run: |
-          codesign --force --timestamp --sign "Developer ID Application" \
-            "${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg"
-          echo "✅ DMG signed"
-
-      - name: Notarize DMG
+      - name: Sign, notarize, and staple DMG
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_APP_PASSWORD }}
@@ -215,45 +196,25 @@ jobs:
         run: |
           DMG_PATH="${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg"
 
-          echo "Submitting for notarization..."
+          codesign --force --timestamp --sign "Developer ID Application" "$DMG_PATH"
+
           xcrun notarytool submit "$DMG_PATH" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --output-format json \
-            --wait > notarize_result.json 2>&1 || true
+            --wait
 
-          cat notarize_result.json
-
-          # Parse results from JSON
-          SUBMISSION_ID=$(python3 -c "import json; print(json.load(open('notarize_result.json'))['id'])" 2>/dev/null || echo "")
-          STATUS=$(python3 -c "import json; print(json.load(open('notarize_result.json'))['status'])" 2>/dev/null || echo "unknown")
-
-          if [ "$STATUS" = "Accepted" ]; then
-            echo "✅ Notarization accepted"
-          else
-            echo "❌ Notarization failed (status: $STATUS)"
-            if [ -n "$SUBMISSION_ID" ]; then
-              echo "Fetching rejection log..."
-              xcrun notarytool log "$SUBMISSION_ID" \
-                --apple-id "$APPLE_ID" \
-                --password "$APPLE_ID_PASSWORD" \
-                --team-id "$APPLE_TEAM_ID" \
-                > developer_log.json 2>&1 || true
-              cat developer_log.json
-            fi
-            exit 1
-          fi
-
-          echo "Stapling notarization ticket..."
           xcrun stapler staple "$DMG_PATH"
 
-          echo "✅ Notarization complete"
-
-      # ---------- Cleanup & Release ----------
-      - name: Clean up keychain
-        if: always()
-        run: security delete-keychain ${{ runner.temp }}/signing.keychain-db 2>/dev/null || true
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          ./Pods/Sparkle/bin/generate_appcast \
+            -s "$SPARKLE_PRIVATE_KEY" \
+            -o appcast.xml \
+            --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/" \
+            "${{ runner.temp }}/sparkle-artifacts"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -270,8 +231,30 @@ jobs:
             2. Open the DMG and drag Clipy to Applications
             3. Launch Clipy — it appears in your menu bar
 
-            **Signed and notarized with Apple Developer ID.** Requires macOS 14.0 Sonoma or later.
+            **Signed, notarized, and Sparkle-enabled.** Requires macOS 14.0 Sonoma or later.
           files: |
             ${{ runner.temp }}/Clipy-${{ steps.version.outputs.VERSION }}.dmg
+            ${{ runner.temp }}/sparkle-artifacts/Clipy-${{ steps.version.outputs.VERSION }}.zip
           draft: false
           prerelease: false
+
+      - name: Publish appcast to docs
+        run: |
+          git fetch origin main
+          git switch -C release-docs origin/main
+          cp "${{ runner.temp }}/sparkle-artifacts/appcast.xml" docs/appcast.xml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- docs/appcast.xml; then
+            echo "Appcast already up to date"
+            exit 0
+          fi
+
+          git add docs/appcast.xml
+          git commit -m "chore(release): update Sparkle appcast for ${{ steps.version.outputs.VERSION }}"
+          git push origin HEAD:main
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "${{ runner.temp }}/signing.keychain-db" 2>/dev/null || true

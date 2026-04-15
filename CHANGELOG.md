@@ -3,9 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and starting on April 15, 2026 this project uses calendar-based versions in the format `YY.M.patch`.
 
-## [2.0.0] - 2026-03-19
+## [26.4.0] - 2026-04-15
+
+### Changed
+- Switched the app and release train to calendar-based versioning (`YY.M.patch`)
+- Unified update checks around GitHub Releases and numeric release comparison
+
+## [26.3.0] - 2026-03-19
 
 ### Added
 - **Spotlight-style search panel** — split-pane UI with filterable clip list, rich preview, and action bar

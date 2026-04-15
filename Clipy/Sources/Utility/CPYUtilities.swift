@@ -64,6 +64,7 @@ final class CPYUtilities {
         /* Updates */
         defaultValues.updateValue(NSNumber(value: true), forKey: Constants.Update.enableAutomaticCheck)
         defaultValues.updateValue(NSNumber(value: 86400), forKey: Constants.Update.checkInterval)
+        defaultValues.updateValue(NSNumber(value: false), forKey: Constants.Update.automaticallyUpdate)
 
         /* Beta */
         defaultValues.updateValue(NSNumber(value: true), forKey: Constants.Beta.pastePlainText)

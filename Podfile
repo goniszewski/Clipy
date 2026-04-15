@@ -5,7 +5,7 @@ target 'Clipy' do
 
   # Application
   pod 'Sauce'
-  pod 'Sparkle'
+  pod 'Sparkle', '2.9.1'
   pod 'RealmSwift'
   pod 'KeyHolder'
   pod 'Magnet'

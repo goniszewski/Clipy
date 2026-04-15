@@ -10,15 +10,44 @@
 //
 
 import Cocoa
-import Sparkle
 import Combine
 import RealmSwift
 import TipKit
 import Magnet
 import ServiceManagement
+import Sparkle
 import os.log
 
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "App")
+
+final class SparkleUpdaterDriver: NSObject, ObservableObject {
+    static let shared = SparkleUpdaterDriver()
+
+    @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var automaticallyChecksForUpdates = true
+    @Published private(set) var automaticallyDownloadsUpdates = false
+    @Published private(set) var feedURL = Constants.Application.appcastURL
+
+    private let updaterController: SPUStandardUpdaterController
+
+    private override init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        super.init()
+        refreshState()
+    }
+
+    func refreshState() {
+        canCheckForUpdates = updaterController.updater.canCheckForUpdates
+        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
+        automaticallyDownloadsUpdates = updaterController.updater.automaticallyDownloadsUpdates
+        feedURL = updaterController.updater.feedURL ?? Constants.Application.appcastURL
+    }
+
+    func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
+        refreshState()
+    }
+}
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSMenuItemValidation {
@@ -26,6 +55,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
     // MARK: - Properties
     private var cancellables = Set<AnyCancellable>()
     private var screenshotTask: Task<Void, Never>?
+    private let updaterDriver = SparkleUpdaterDriver.shared
 
     // MARK: - Init
     override func awakeFromNib() {
@@ -124,6 +154,10 @@ class AppDelegate: NSObject, NSMenuItemValidation {
 
     @objc func terminate() {
         terminateApplication()
+    }
+
+    @objc func checkForUpdates(_ sender: Any?) {
+        updaterDriver.checkForUpdates()
     }
 
     @objc func clearAllHistory() {
@@ -242,12 +276,6 @@ extension AppDelegate: NSApplicationDelegate {
             promptToAddLoginItems()
         }
 
-        // Sparkle
-        let updater = SUUpdater.shared()
-        updater?.feedURL = Constants.Application.appcastURL
-        updater?.automaticallyChecksForUpdates = AppEnvironment.current.defaults.bool(forKey: Constants.Update.enableAutomaticCheck)
-        updater?.updateCheckInterval = TimeInterval(AppEnvironment.current.defaults.integer(forKey: Constants.Update.checkInterval))
-
         // Binding Events
         bind()
 
@@ -259,6 +287,7 @@ extension AppDelegate: NSApplicationDelegate {
 
         // Managers
         AppEnvironment.current.menuManager.setup()
+        updaterDriver.refreshState()
 
         // Initialize collect mode indicator (observes queue state)
         _ = CollectModeIndicatorController.shared

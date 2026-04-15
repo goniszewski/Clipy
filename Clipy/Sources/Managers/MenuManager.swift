@@ -600,7 +600,7 @@ private extension MenuManager {
             devLabel.sizeToFit()
             devLabel.frame.origin = CGPoint(x: 20, y: 2)
             button.addSubview(devLabel)
-            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion ?? "") (Debug Build)"
+            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion) (Debug Build)"
         }
         #else
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -615,7 +615,7 @@ private extension MenuManager {
             }
             image?.isTemplate = true
             button.image = image
-            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion ?? "")"
+            button.toolTip = "\(Constants.Application.name) \(Bundle.main.appVersion)"
         }
         #endif
         statusItem?.menu = clipMenu
