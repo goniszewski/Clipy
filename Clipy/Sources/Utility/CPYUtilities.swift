@@ -59,7 +59,7 @@ final class CPYUtilities {
         defaultValues.updateValue(NSNumber(value: false), forKey: Constants.UserDefaults.clearHistoryIncludesPinned)
 
         /* Snippets */
-        defaultValues.updateValue(NSNumber(value: true), forKey: Constants.Snippets.useModernPicker)
+        defaultValues.updateValue(NSNumber(value: false), forKey: Constants.Snippets.useModernPicker)
 
         /* Updates */
         defaultValues.updateValue(NSNumber(value: true), forKey: Constants.Update.enableAutomaticCheck)

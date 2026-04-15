@@ -81,6 +81,26 @@ class AppDelegate: NSObject, NSMenuItemValidation {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    @MainActor @objc func unlockVaultFolder(_ sender: NSMenuItem) {
+        guard let folderID = sender.representedObject as? String else {
+            NSSound.beep()
+            return
+        }
+        guard let realm = Realm.safeInstance(),
+              let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else {
+            NSSound.beep()
+            return
+        }
+
+        VaultAuthService.shared.authenticate(folderID: folder.identifier, reason: "Unlock \"\(folder.title)\" vault") { success in
+            DispatchQueue.main.async {
+                guard success else { return }
+                AppEnvironment.current.menuManager.refresh()
+                AppEnvironment.current.menuManager.popUpSnippetFolder(folder)
+            }
+        }
+    }
+
     @objc func pasteAsPlainText() {
         let pasteboard = NSPasteboard.general
         guard let string = pasteboard.string(forType: .string) else { return }

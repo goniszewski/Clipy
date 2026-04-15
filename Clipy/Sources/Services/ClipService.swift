@@ -122,6 +122,20 @@ final class ClipService {
     func incrementChangeCount() {
         cachedChangeCount += 1
     }
+
+    func markPasted(_ clip: CPYClip) {
+        guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting) else { return }
+        guard let realm = Realm.safeInstance() else { return }
+        guard let managedClip = realm.object(ofType: CPYClip.self, forPrimaryKey: clip.dataHash) else { return }
+
+        let now = Int(Date().timeIntervalSince1970)
+        let latestUpdateTime = realm.objects(CPYClip.self).max(ofProperty: #keyPath(CPYClip.updateTime)) as Int? ?? now
+        let nextUpdateTime = max(now, latestUpdateTime + 1)
+
+        realm.transaction {
+            managedClip.updateTime = nextUpdateTime
+        }
+    }
 }
 
 // MARK: - Create Clip
@@ -198,7 +212,7 @@ extension ClipService {
             // Save Realm and .data file
             guard let dispatchRealm = Realm.safeInstance() else { return }
             if CPYUtilities.prepareSaveToPath(CPYUtilities.applicationSupportFolder()) {
-                if NSKeyedArchiver.archiveRootObject(data, toFile: savedPath) {
+                if ArchiveCompatibility.archiveRootObject(data, toFile: savedPath) {
                     dispatchRealm.transaction {
                         dispatchRealm.add(clip, update: .all)
                     }
