@@ -46,4 +46,4 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 - Realm schema migrated to v10 (added `isPinned` and `ocrText` to CPYClip, `isVault` to CPYFolder)
 
 ### Attribution
-This project is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the Clipy Project. See [LICENSE](LICENSE) for details.
+Clipy Classic is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the Clipy Project. The current fork is maintained by Robert Goniszewski and builds on earlier modernization work by Jean Luc Iradukunda. See [LICENSE](LICENSE) for details.

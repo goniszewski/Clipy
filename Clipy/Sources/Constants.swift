@@ -19,6 +19,8 @@ struct Constants {
         static let githubOwner = "goniszewski"
         static let githubRepository = "Clipy"
         static let githubRepositorySlug = "\(githubOwner)/\(githubRepository)"
+        static let maintainerName = "Robert Goniszewski"
+        static let maintainerHandle = "@\(githubOwner)"
         #if DEBUG
             static let name = debugName
         #else
@@ -28,13 +30,19 @@ struct Constants {
         static let releaseSettingsTitle = "\(releaseName) Settings"
         static let snippetEditorTitle = "\(name) Snippets"
         static let releaseSnippetEditorTitle = "\(releaseName) Snippets"
-        static let aboutCredits = """
+        static let aboutTagline = "A modern reimplementation of the original Clipy clipboard manager for macOS."
+        static let aboutLineage = """
         Original app: Clipy by Naotaka Morimoto and the Clipy Project.
-        Modern fork this build is based on: Jean Luc Iradukunda.
+        Modern fork foundation: Jean Luc Iradukunda.
+        Current maintainer: \(maintainerName) (\(maintainerHandle)).
         """
-        static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nFork work © 2024-2026 Jean Luc Iradukunda."
+        static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nCurrent fork maintenance © 2026 \(maintainerName)."
+        static let repositoryURL = URL(string: "https://github.com/\(githubRepositorySlug)")!
         static let appcastURL = URL(string: "https://\(githubOwner).github.io/\(githubRepository)/appcast.xml")!
         static let releasesURL = URL(string: "https://github.com/\(githubRepositorySlug)/releases")!
+        static let issuesURL = URL(string: "https://github.com/\(githubRepositorySlug)/issues")!
+        static let discussionsURL = URL(string: "https://github.com/\(githubRepositorySlug)/discussions")!
+        static let changelogURL = URL(string: "https://github.com/\(githubRepositorySlug)/blob/main/CHANGELOG.md")!
         static let supportDirectoryName = "ClipyDev"
     }
 

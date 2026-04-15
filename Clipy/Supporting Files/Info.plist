@@ -29,7 +29,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Original work © 2015-2018 Clipy Project and Naotaka Morimoto. Fork work © 2024-2026 Jean Luc Iradukunda.</string>
+	<string>Original work © 2015-2018 Clipy Project and Naotaka Morimoto. Current fork maintenance © 2026 Robert Goniszewski.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

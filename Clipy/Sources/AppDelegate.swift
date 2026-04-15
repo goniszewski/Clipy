@@ -97,7 +97,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
         paragraphStyle.alignment = .center
 
         let credits = NSAttributedString(
-            string: Constants.Application.aboutCredits,
+            string: Constants.Application.aboutLineage,
             attributes: [
                 .font: NSFont.systemFont(ofSize: 12),
                 .paragraphStyle: paragraphStyle

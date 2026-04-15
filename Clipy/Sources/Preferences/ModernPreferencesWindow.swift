@@ -25,6 +25,7 @@ enum PreferenceTab: String, Identifiable {
     case excludedApps = "Excluded Apps"
     case updates = "Updates"
     case developer = "Developer"
+    case about = "About"
 
     var id: String { rawValue }
 
@@ -37,6 +38,7 @@ enum PreferenceTab: String, Identifiable {
         case .excludedApps: return "xmark.app"
         case .updates: return "arrow.triangle.2.circlepath"
         case .developer: return "hammer"
+        case .about: return "info.circle"
         }
     }
 
@@ -46,6 +48,7 @@ enum PreferenceTab: String, Identifiable {
         if UserDefaults.standard.bool(forKey: Constants.Developer.devModeEnabled) {
             tabs.append(.developer)
         }
+        tabs.append(.about)
         return tabs
     }
 }
@@ -110,6 +113,8 @@ struct ModernPreferencesView: View {
                     UpdatesPreferencesView()
                 case .developer:
                     DeveloperPreferencesView()
+                case .about:
+                    AboutPreferencesView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1287,6 +1292,130 @@ struct UpdatesPreferencesView: View {
 
     private var updateReadinessDetail: String {
         updaterDriver.canCheckForUpdates ? updaterDriver.feedURL.host ?? "configured" : "check configuration"
+    }
+}
+
+// MARK: - About Preferences
+struct AboutPreferencesView: View {
+    private let bundle = Bundle.main
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .center, spacing: 16) {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 72, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(Constants.Application.releaseName)
+                            .font(.system(size: 24, weight: .semibold))
+                        Text(Constants.Application.aboutTagline)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                        Text(versionLine)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Project", systemImage: "person.2")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        aboutRow(title: "Maintainer", value: "\(Constants.Application.maintainerName) (\(Constants.Application.maintainerHandle))")
+                        aboutRow(title: "Update feed", value: Constants.Application.appcastURL.absoluteString, monospace: true)
+
+                        Divider()
+
+                        Text(Constants.Application.aboutLineage)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Divider()
+
+                        Text(Constants.Application.aboutCopyright)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal, 24)
+
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Links", systemImage: "link")
+                            .font(.system(size: 13, weight: .semibold))
+
+                        HStack(spacing: 8) {
+                            aboutLinkButton("Repository", url: Constants.Application.repositoryURL)
+                            aboutLinkButton("Releases", url: Constants.Application.releasesURL)
+                            aboutLinkButton("Changelog", url: Constants.Application.changelogURL)
+                        }
+
+                        HStack(spacing: 8) {
+                            aboutLinkButton("Issues", url: Constants.Application.issuesURL)
+                            aboutLinkButton("Discussions", url: Constants.Application.discussionsURL)
+                            aboutLinkButton("Check for Updates") {
+                                SparkleUpdaterDriver.shared.checkForUpdates()
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 18)
+            }
+        }
+    }
+
+    private var versionLine: String {
+        if let build = bundle.appBuildVersion, build != bundle.appVersion {
+            return "Version \(bundle.appVersion) • Build \(build)"
+        }
+        return "Version \(bundle.appVersion)"
+    }
+
+    private var appIcon: NSImage {
+        NSApp.applicationIconImage ?? NSImage()
+    }
+
+    @ViewBuilder
+    private func aboutRow(title: String, value: String, monospace: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .leading)
+
+            Text(value)
+                .font(.system(size: monospace ? 11 : 12, design: monospace ? .monospaced : .default))
+                .foregroundStyle(.primary)
+                .textSelection(.enabled)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func aboutLinkButton(_ title: String, url: URL) -> some View {
+        Button(title) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func aboutLinkButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
     }
 }
 

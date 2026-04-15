@@ -9,9 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-brightgreen)](https://github.com/goniszewski/Clipy/releases)
 
-**Clipy** is a clipboard manager for macOS — rebuilt with a modern SwiftUI interface, Spotlight-style search, syntax highlighting, OCR, smart actions, and more.
+**Clipy Classic** is a clipboard manager for macOS — a modern reimplementation of the original Clipy experience with a SwiftUI interface, Spotlight-style search, syntax highlighting, OCR, smart actions, and more.
 
-> *Forked from [Clipy/Clipy](https://github.com/Clipy/Clipy) — the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project.*
+> *Built on [Clipy/Clipy](https://github.com/Clipy/Clipy), the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project. This fork is currently maintained by Robert Goniszewski.*
 
 <!-- TODO: Add demo GIF or video recorded with Screen Studio -->
 <!-- <p align="center"><img src="./Resources/demo.gif" width="700"></p> -->
@@ -26,7 +26,25 @@
 2. Open the DMG and drag Clipy to Applications
 3. Launch Clipy — it appears in your menu bar
 
-> Signed and notarized with Apple Developer ID. No Terminal commands or security workarounds needed.
+> Release DMGs are intended to be Developer ID-signed and notarized once Apple signing credentials are configured.
+
+### Gatekeeper Bypass for Unsigned Builds
+
+If you're testing a local build or an unsigned release artifact, macOS may block Clipy on first launch.
+
+1. In Finder, open `Applications`
+2. Control-click `Clipy.app`
+3. Choose `Open`
+4. Confirm the warning dialog by clicking `Open` again
+
+If the app is still blocked:
+
+1. Open `System Settings` → `Privacy & Security`
+2. Scroll to the security section near the bottom
+3. Click `Open Anyway` for Clipy
+4. Retry launching the app and confirm the final prompt
+
+This bypass is only needed for unsigned or unnotarized builds. Proper Developer ID-signed releases should launch normally.
 
 ### Build from Source
 
@@ -51,6 +69,8 @@ For example, the release cycle started on April 15, 2026 is `26.4.0`.
 
 **Manual:** Download the latest DMG, drag to Applications (replace existing), and launch.
 
+If Gatekeeper blocks the app, follow the unsigned-build bypass steps above.
+
 > Accessibility permission persists across updates — no need to re-grant.
 
 ### Release Infrastructure
@@ -58,8 +78,9 @@ For example, the release cycle started on April 15, 2026 is `26.4.0`.
 Clipy's auto-update pipeline uses Sparkle with GitHub-hosted artifacts:
 
 - `docs/appcast.xml` is published via GitHub Pages at `https://goniszewski.github.io/Clipy/appcast.xml`
-- signed `.zip` update archives are uploaded to GitHub Releases for Sparkle
-- signed `.dmg` archives are uploaded to GitHub Releases for manual installs
+- Sparkle `.zip` update archives are uploaded to GitHub Releases
+- `.dmg` archives are uploaded to GitHub Releases for manual installs
+- full trust on other Macs requires Developer ID signing and notarization
 
 Required GitHub Actions secrets:
 
@@ -251,12 +272,12 @@ open Clipy.xcworkspace
 
 Both can coexist on the same Mac with separate data. To run both simultaneously, enable Developer Mode in the dev build's settings and toggle **"Disable Global Hotkeys"** — this prevents hotkey conflicts.
 
-| | **Clipy** (Release) | **Clipy Dev** (Debug) |
+| | **Clipy Classic** (Release) | **Clipy Classic Dev** (Debug) |
 |---|---|---|
 | Bundle ID | `com.clipy-app.Clipy` | `com.clipy-app.Clipy-Dev.debug` |
 | Data directory | `~/Library/Application Support/com.clipy-app.Clipy/` | `~/Library/Application Support/com.clipy-app.Clipy-Dev.debug/` |
 | Menu bar | Standard icon | Icon with orange **DEV** badge |
-| Settings title | "Clipy Settings" | "Clipy Dev Settings" |
+| Settings title | "Clipy Classic Settings" | "Clipy Classic Dev Settings" |
 | Install | DMG from Releases | `Cmd+R` in Xcode |
 | Accessibility | Persists across updates (Developer ID-signed) | Persists across rebuilds (same local signing identity) |
 
@@ -293,7 +314,7 @@ See [Issues](https://github.com/goniszewski/Clipy/issues) for the full feature r
 
 ## Attribution
 
-Clipy is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the [Clipy Project](https://github.com/Clipy). Special thanks to [@naotaka](https://github.com/naotaka) for publishing the original [ClipMenu](https://github.com/naotaka/ClipMenu) as open source.
+Clipy Classic is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), originally created by the [Clipy Project](https://github.com/Clipy). The current fork is maintained by **Robert Goniszewski**. Special thanks to [@naotaka](https://github.com/naotaka) for publishing the original [ClipMenu](https://github.com/naotaka/ClipMenu) as open source, and to Jean Luc Iradukunda for the intermediate modernization work this fork builds on.
 
 ## Star History
 
@@ -310,4 +331,4 @@ Clipy is a fork of [Clipy/Clipy](https://github.com/Clipy/Clipy) (v1.2.1), origi
 MIT License. See [LICENSE](LICENSE) for details.
 
 Copyright (c) 2015-2018 Clipy Project
-Copyright (c) 2024-2026 Jean Luc Iradukunda
+Copyright (c) 2026 Robert Goniszewski
