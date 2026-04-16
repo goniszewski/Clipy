@@ -1257,7 +1257,7 @@ struct UpdatesPreferencesView: View {
                     Button("Check for Updates") {
                         updaterDriver.checkForUpdates()
                     }
-                    .disabled(!updaterDriver.canCheckForUpdates)
+                    .disabled(!updaterDriver.canCheckForUpdates || updaterDriver.isCheckingForUpdates)
 
                     Spacer()
 
@@ -1279,19 +1279,35 @@ struct UpdatesPreferencesView: View {
     }
 
     private var updateReadinessTitle: String {
-        updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
+        if updaterDriver.isCheckingForUpdates {
+            return "Sparkle checking for updates"
+        }
+
+        return updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
     }
 
     private var updateReadinessIcon: String {
-        updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        if updaterDriver.isCheckingForUpdates {
+            return "arrow.triangle.2.circlepath"
+        }
+
+        return updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
     }
 
     private var updateReadinessColor: SwiftUI.Color {
-        updaterDriver.canCheckForUpdates ? .green : .orange
+        if updaterDriver.isCheckingForUpdates {
+            return .secondary
+        }
+
+        return updaterDriver.canCheckForUpdates ? .green : .orange
     }
 
     private var updateReadinessDetail: String {
-        updaterDriver.canCheckForUpdates ? updaterDriver.feedURL.host ?? "configured" : "check configuration"
+        if updaterDriver.isCheckingForUpdates {
+            return updaterDriver.feedURL.host ?? "please wait"
+        }
+
+        return updaterDriver.canCheckForUpdates ? updaterDriver.feedURL.host ?? "configured" : "check configuration"
     }
 }
 

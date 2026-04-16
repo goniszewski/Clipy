@@ -20,24 +20,29 @@ import os.log
 
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "App")
 
-final class SparkleUpdaterDriver: NSObject, ObservableObject {
+final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = SparkleUpdaterDriver()
 
     @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var isCheckingForUpdates = false
     @Published private(set) var automaticallyChecksForUpdates = true
     @Published private(set) var automaticallyDownloadsUpdates = false
     @Published private(set) var feedURL = Constants.Application.appcastURL
 
-    private let updaterController: SPUStandardUpdaterController
+    private lazy var updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: self,
+        userDriverDelegate: nil
+    )
 
     private override init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
         super.init()
         refreshState()
     }
 
     func refreshState() {
         canCheckForUpdates = updaterController.updater.canCheckForUpdates
+        isCheckingForUpdates = updaterController.updater.sessionInProgress
         automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
         automaticallyDownloadsUpdates = updaterController.updater.automaticallyDownloadsUpdates
         feedURL = updaterController.updater.feedURL ?? Constants.Application.appcastURL
@@ -45,6 +50,10 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject {
 
     func checkForUpdates() {
         updaterController.checkForUpdates(nil)
+        refreshState()
+    }
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         refreshState()
     }
 }
