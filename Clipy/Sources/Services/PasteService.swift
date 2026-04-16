@@ -147,13 +147,15 @@ extension PasteService {
     func paste() {
         guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.inputPasteCommand) else { return }
 
-        // If accessibility isn't granted, the content is already on the clipboard.
-        // Prompt once per session when the user actually tries to paste.
         guard AppEnvironment.current.accessibilityService.isAccessibilityEnabled(isPrompt: false) else {
             AppEnvironment.current.accessibilityService.showAccessibilityAuthenticationAlert()
             return
         }
 
+        postPasteShortcut()
+    }
+
+    private func postPasteShortcut() {
         let vKeyCode = Sauce.shared.keyCode(by: .v)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             let source = CGEventSource(stateID: .combinedSessionState)

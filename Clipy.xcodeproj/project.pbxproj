@@ -852,10 +852,11 @@
 			);
 			name = SwiftGen;
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/SwiftGenPhaseOutput.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/SwiftGen/bin/swiftgen\"";
+			shellScript = "if [ \"${CLIPY_RUN_SWIFTGEN_IN_BUILD:-0}\" != \"1\" ]; then\n  echo \"Skipping SwiftGen during Xcode build; run scripts/run-swiftgen.sh explicitly when needed.\"\n  printf \"skipped\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n  exit 0\nfi\n\"${SRCROOT}/scripts/run-swiftgen.sh\"\nprintf \"ran\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 		};
 		FAAA88991E686CED0088FB34 /* BartyCrouch */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -866,10 +867,11 @@
 			);
 			name = BartyCrouch;
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/BartyCrouchPhaseOutput.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/BartyCrouch/bartycrouch\" interfaces -p \"$PROJECT_DIR\"";
+			shellScript = "if [ \"${CLIPY_RUN_BARTYCROUCH_IN_BUILD:-0}\" != \"1\" ]; then\n  echo \"Skipping BartyCrouch during Xcode build; run scripts/run-bartycrouch.sh explicitly when needed.\"\n  printf \"skipped\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n  exit 0\nfi\n\"${SRCROOT}/scripts/run-bartycrouch.sh\"\nprintf \"ran\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 		};
 		FAAD02201CA98E20007C6EEE /* SwiftLint */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -880,10 +882,11 @@
 			);
 			name = SwiftLint;
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/SwiftLintPhaseOutput.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/SwiftLint/swiftlint\"";
+			shellScript = "if [ \"${CLIPY_RUN_SWIFTLINT_IN_BUILD:-0}\" != \"1\" ]; then\n  echo \"Skipping SwiftLint during Xcode build; run scripts/run-swiftlint.sh explicitly when needed.\"\n  printf \"skipped\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n  exit 0\nfi\n\"${SRCROOT}/scripts/run-swiftlint.sh\"\nprintf \"ran\\n\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1217,7 +1220,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26.4.2;
+				CURRENT_PROJECT_VERSION = 26.4.3;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
@@ -1225,7 +1228,7 @@
 				INFOPLIST_FILE = "Clipy/Supporting Files/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 26.4.2;
+				MARKETING_VERSION = 26.4.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.clipy-app.Clipy-Dev.debug";
 				PRODUCT_MODULE_NAME = Clipy;
 				PRODUCT_NAME = "Clipy Dev";
@@ -1248,7 +1251,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26.4.2;
+				CURRENT_PROJECT_VERSION = 26.4.3;
 				DEVELOPMENT_TEAM = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1257,7 +1260,7 @@
 				INFOPLIST_FILE = "Clipy/Supporting Files/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 26.4.2;
+				MARKETING_VERSION = 26.4.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.clipy-app.Clipy";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";

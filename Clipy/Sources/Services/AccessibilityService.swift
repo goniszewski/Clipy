@@ -30,6 +30,10 @@ extension AccessibilityService {
             }
         }
 
+        if !isPrompt {
+            return AXIsProcessTrusted()
+        }
+
         let checkOptionPromptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let opts = [checkOptionPromptKey: isPrompt] as CFDictionary
         return AXIsProcessTrustedWithOptions(opts)

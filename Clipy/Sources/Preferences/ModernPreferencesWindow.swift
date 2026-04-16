@@ -76,10 +76,12 @@ struct ModernPreferencesView: View {
                                 .foregroundStyle(selectedTab == tab ? .white : .primary)
                             Spacer()
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(selectedTab == tab ? SwiftUI.Color.accentColor : SwiftUI.Color.clear)
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -626,20 +628,8 @@ struct MenuPreferencesView: View {
             Section {
                 Toggle("Show image thumbnails", isOn: $showImage)
                 if showImage {
-                    HStack {
-                        Text("Thumbnail size")
-                        Spacer()
-                        TextField("W", value: $thumbnailWidth, format: .number)
-                            .frame(width: 50)
-                            .textFieldStyle(.roundedBorder)
-                        Text("\u{00D7}")
-                            .foregroundStyle(.secondary)
-                        TextField("H", value: $thumbnailHeight, format: .number)
-                            .frame(width: 50)
-                            .textFieldStyle(.roundedBorder)
-                        Text("px")
-                            .foregroundStyle(.secondary)
-                    }
+                    thumbnailDimensionRow("Thumbnail width", value: $thumbnailWidth)
+                    thumbnailDimensionRow("Thumbnail height", value: $thumbnailHeight)
                 }
                 Toggle("Show color code preview", isOn: $showColorPreview)
                 Toggle("Show folder icons", isOn: $showIcons)
@@ -725,6 +715,19 @@ struct MenuPreferencesView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+    }
+
+    private func thumbnailDimensionRow(_ title: String, value: Binding<Int>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            TextField("", value: value, format: .number)
+                .frame(width: 60)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.trailing)
+            Text("px")
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

@@ -37,7 +37,15 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
 
     private override init() {
         super.init()
+        migrateLegacyFeedURLIfNeeded()
         refreshState()
+    }
+
+    private func migrateLegacyFeedURLIfNeeded() {
+        if let previousFeedURL = updaterController.updater.clearFeedURLFromUserDefaults(),
+           previousFeedURL != Constants.Application.appcastURL {
+            logger.info("Cleared legacy Sparkle feed URL override: \(previousFeedURL.absoluteString, privacy: .public)")
+        }
     }
 
     func refreshState() {
@@ -63,7 +71,6 @@ class AppDelegate: NSObject, NSMenuItemValidation {
 
     // MARK: - Properties
     private var cancellables = Set<AnyCancellable>()
-    private var screenshotTask: Task<Void, Never>?
     private let updaterDriver = SparkleUpdaterDriver.shared
 
     // MARK: - Init
@@ -324,73 +331,6 @@ private extension AppDelegate {
                 self?.reflectLoginItemState()
             }
             .store(in: &cancellables)
-
-        // Screenshot observation (beta feature)
-        let observeScreenshot = AppEnvironment.current.defaults.bool(forKey: Constants.Beta.observerScreenshot)
-        if observeScreenshot {
-            startScreenshotObservation()
-        }
-
-        AppEnvironment.current.defaults
-            .publisher(for: \.clipyObserveScreenshot)
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] enabled in
-                if enabled {
-                    self?.startScreenshotObservation()
-                } else {
-                    self?.screenshotTask?.cancel()
-                    self?.screenshotTask = nil
-                }
-            }
-            .store(in: &cancellables)
-    }
-
-    func startScreenshotObservation() {
-        guard screenshotTask == nil else { return }
-        // Monitor pasteboard for screenshot images (simplifies the old Screeen/RxScreeen dependency)
-        // Screenshots are already captured via the clipboard monitor in ClipService.
-        // This additional observer watches for screenshot files saved to disk.
-        screenshotTask = Task { [weak self] in
-            let screenshotDir = (NSHomeDirectory() as NSString).appendingPathComponent("Desktop")
-            guard let self = self else { return }
-
-            let fileDescriptor = open(screenshotDir, O_EVTONLY)
-            guard fileDescriptor >= 0 else { return }
-
-            let source = DispatchSource.makeFileSystemObjectSource(
-                fileDescriptor: fileDescriptor,
-                eventMask: .write,
-                queue: .global()
-            )
-
-            source.setEventHandler {
-                // When a new file appears on Desktop, check if it's a screenshot
-                if let contents = try? FileManager.default.contentsOfDirectory(atPath: screenshotDir) {
-                    let screenshotFiles = contents.filter { $0.hasPrefix("Screenshot") || $0.hasPrefix("Screen Shot") }
-                    if let latest = screenshotFiles.sorted().last {
-                        let path = (screenshotDir as NSString).appendingPathComponent(latest)
-                        if let image = NSImage(contentsOfFile: path) {
-                            DispatchQueue.main.async {
-                                AppEnvironment.current.clipService.create(with: image)
-                            }
-                        }
-                    }
-                }
-            }
-
-            source.setCancelHandler {
-                close(fileDescriptor)
-            }
-
-            source.resume()
-
-            // Keep alive until cancelled
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-            }
-            source.cancel()
-        }
     }
 }
 
@@ -398,8 +338,5 @@ private extension AppDelegate {
 private extension UserDefaults {
     @objc var clipyLoginItem: Bool {
         return bool(forKey: Constants.UserDefaults.loginItem)
-    }
-    @objc var clipyObserveScreenshot: Bool {
-        return bool(forKey: Constants.Beta.observerScreenshot)
     }
 }

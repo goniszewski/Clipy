@@ -52,6 +52,7 @@ This bypass is only needed for unsigned or unnotarized builds. Proper Developer 
 git clone https://github.com/goniszewski/Clipy.git && cd Clipy
 brew install cocoapods
 pod install
+./scripts/run-swiftgen.sh
 open Clipy.xcworkspace
 # Build (Cmd+B) and Run (Cmd+R) the "Clipy" scheme
 ```
@@ -112,6 +113,36 @@ One-time GitHub setup:
 If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
 
 If `SPARKLE_PRIVATE_KEY` is missing or empty, the Release workflow skips appcast generation and publishes a manual-download release only.
+
+### Local Verification
+
+Use the same commands that CI runs before opening a PR:
+
+```bash
+./scripts/run-swiftlint.sh
+./scripts/run-swiftgen.sh
+xcodebuild \
+  -workspace Clipy.xcworkspace \
+  -scheme Clipy \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/clipy-build \
+  CODE_SIGN_IDENTITY="-" \
+  CODE_SIGNING_REQUIRED=NO \
+  build
+xcodebuild \
+  -workspace Clipy.xcworkspace \
+  -scheme Clipy \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/clipy-test \
+  -resultBundlePath /tmp/clipy-tests.xcresult \
+  CODE_SIGN_IDENTITY="-" \
+  CODE_SIGNING_REQUIRED=NO \
+  test
+```
+
+Xcode builds now skip `SwiftLint`, `SwiftGen`, and `BartyCrouch` by default. Run the repo scripts explicitly when you need linting or code generation.
 
 ### Uninstall
 

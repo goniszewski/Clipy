@@ -87,7 +87,7 @@ struct AppEnvironment {
                            excludeAppService: excludeAppService,
                            accessibilityService: current.accessibilityService,
                            menuManager: current.menuManager,
-                           defaults: current.defaults)
+                           defaults: defaults)
     }
 
  }

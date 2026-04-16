@@ -23,6 +23,7 @@ cd Clipy
 # Install dependencies
 bundle install --path=vendor/bundle
 bundle exec pod install
+./scripts/run-swiftgen.sh
 
 # Open in Xcode
 open Clipy.xcworkspace
@@ -59,7 +60,7 @@ Check the [wishlist](wishlist.md) first — your idea might already be tracked. 
 2. **Name your branch** descriptively: `feature/clipboard-diff`, `fix/pin-state-lost`, etc.
 3. **Keep PRs focused** — one feature or fix per PR
 4. **Test your changes** — build and run the app, verify the feature works
-5. **Follow the code style** — SwiftLint runs as a build phase; fix any warnings
+5. **Follow the code style** — run `./scripts/run-swiftlint.sh` before opening the PR
 6. Open a PR against `main` with a clear description of what and why
 
 ### Code Style
@@ -88,7 +89,38 @@ Clipy supports multiple languages. To add or update translations:
 
 1. Find the `.lproj` directories in `Clipy/Resources/`
 2. Edit `Localizable.strings` for your language
-3. Run `bundle exec pod install` to regenerate SwiftGen constants
+3. Run `./scripts/run-bartycrouch.sh` if you changed localized AppKit/XIB-backed strings
+4. Run `./scripts/run-swiftgen.sh` to regenerate SwiftGen constants
+
+### Local Verification
+
+Use the same commands as CI before submitting changes:
+
+```bash
+./scripts/run-swiftlint.sh
+./scripts/run-swiftgen.sh
+xcodebuild \
+  -workspace Clipy.xcworkspace \
+  -scheme Clipy \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/clipy-build \
+  CODE_SIGN_IDENTITY="-" \
+  CODE_SIGNING_REQUIRED=NO \
+  build
+xcodebuild \
+  -workspace Clipy.xcworkspace \
+  -scheme Clipy \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/clipy-test \
+  -resultBundlePath /tmp/clipy-tests.xcresult \
+  CODE_SIGN_IDENTITY="-" \
+  CODE_SIGNING_REQUIRED=NO \
+  test
+```
+
+Xcode builds no longer run `SwiftLint`, `SwiftGen`, or `BartyCrouch` automatically. Run the scripts explicitly when you need those checks or generated outputs.
 
 ## License
 
