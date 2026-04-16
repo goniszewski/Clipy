@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and starting on April 15, 2026 this project uses calendar-based versions in the format `YY.M.patch`.
 
+## [26.4.1] - 2026-04-16
+
+### Fixed
+- Restored automatic paste after selecting a history item when macOS grants event-posting permission but the legacy Accessibility trust check remains false
+
 ## [26.4.0] - 2026-04-15
 
 ### Changed
