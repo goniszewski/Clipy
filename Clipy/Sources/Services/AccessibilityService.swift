@@ -23,6 +23,13 @@ final class AccessibilityService {
 extension AccessibilityService {
     @discardableResult
     func isAccessibilityEnabled(isPrompt: Bool) -> Bool {
+        if #available(macOS 10.15, *) {
+            let hasPostEventAccess = isPrompt ? CGRequestPostEventAccess() : CGPreflightPostEventAccess()
+            if hasPostEventAccess {
+                return true
+            }
+        }
+
         let checkOptionPromptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let opts = [checkOptionPromptKey: isPrompt] as CFDictionary
         return AXIsProcessTrustedWithOptions(opts)
