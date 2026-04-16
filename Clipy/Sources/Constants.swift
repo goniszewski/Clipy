@@ -39,6 +39,7 @@ struct Constants {
         static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nCurrent fork maintenance © 2026 \(maintainerName)."
         static let repositoryURL = URL(string: "https://github.com/\(githubRepositorySlug)")!
         static let appcastURL = URL(string: "https://\(githubOwner).github.io/\(githubRepository)/appcast.xml")!
+        static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/\(githubRepositorySlug)/releases/latest")!
         static let releasesURL = URL(string: "https://github.com/\(githubRepositorySlug)/releases")!
         static let issuesURL = URL(string: "https://github.com/\(githubRepositorySlug)/issues")!
         static let discussionsURL = URL(string: "https://github.com/\(githubRepositorySlug)/discussions")!
