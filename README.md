@@ -110,7 +110,7 @@ One-time GitHub setup:
    ```
 4. Add the Apple signing and notarization secrets listed above
 
-If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts. Users can still install them by following the Gatekeeper bypass steps in the Install section above.
+If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts as manual-download releases only. Users can still install them by following the Gatekeeper bypass steps in the Install section above, but Sparkle appcasts are skipped because unsigned builds cannot be validated as automatic updates.
 
 If `SPARKLE_PRIVATE_KEY` is missing or empty, the Release workflow skips appcast generation and publishes a manual-download release only.
 

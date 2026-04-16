@@ -80,8 +80,11 @@ jobs:
             echo "::warning title=Unsigned release::Missing Apple signing secrets: ${missing[*]}. Building unsigned, unnotarized artifacts that require the documented Gatekeeper bypass."
           fi
 
-          if [ -n "$SPARKLE_PRIVATE_KEY" ]; then
+          if [ "${#missing[@]}" -eq 0 ] && [ -n "$SPARKLE_PRIVATE_KEY" ]; then
             echo "sparkle_appcast_enabled=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "sparkle_appcast_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Manual-only release::Skipping Sparkle appcast publishing because the build is not Developer ID-signed. Sparkle updates require signed update archives."
           else
             echo "sparkle_appcast_enabled=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Manual-only release::SPARKLE_PRIVATE_KEY is missing or empty. Skipping appcast generation and publishing a manual-download release only."
@@ -197,6 +200,23 @@ jobs:
         run: |
           codesign --verify --deep --strict --verbose=2 "${{ runner.temp }}/export/Clipy.app"
 
+      - name: Verify Sparkle update signing prerequisites
+        if: steps.release_mode.outputs.sparkle_appcast_enabled == 'true'
+        run: |
+          APP_PATH="${{ runner.temp }}/export/Clipy.app"
+          SIGNING_DETAILS="$(codesign -dvv "$APP_PATH" 2>&1)"
+          echo "$SIGNING_DETAILS"
+
+          if echo "$SIGNING_DETAILS" | grep -q '^Signature=adhoc$'; then
+            echo "::error title=Invalid Sparkle artifact::Clipy.app is ad-hoc signed. Sparkle updates require a Developer ID-signed app."
+            exit 1
+          fi
+
+          if echo "$SIGNING_DETAILS" | grep -q '^TeamIdentifier=not set$'; then
+            echo "::error title=Invalid Sparkle artifact::Clipy.app is missing a team identifier. Sparkle updates require a Developer ID-signed app."
+            exit 1
+          fi
+
       - name: Notarize and staple app
         if: steps.release_mode.outputs.apple_signing_enabled == 'true'
         env:
@@ -301,7 +321,7 @@ jobs:
           3. If macOS blocks the app on first launch, open \`Applications\`, Control-click \`Clipy.app\`, then choose \`Open\`
           4. If needed, go to \`System Settings\` -> \`Privacy & Security\` and click \`Open Anyway\`
 
-          **Unsigned, unnotarized release.** This build uses the documented Gatekeeper bypass flow on first launch. Sparkle update metadata is still published for this release.
+          **Unsigned, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are disabled until Developer ID signing and notarization are configured.
           EOF
           else
             cat > "$RELEASE_NOTES_PATH" <<EOF

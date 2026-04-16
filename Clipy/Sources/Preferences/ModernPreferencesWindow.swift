@@ -1234,7 +1234,7 @@ struct UpdatesPreferencesView: View {
                 HStack {
                     Text("Automatic checks")
                     Spacer()
-                    Text(updaterDriver.automaticallyChecksForUpdates ? "Enabled" : "Disabled")
+                    Text(automaticChecksValue)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(updaterDriver.automaticallyChecksForUpdates ? .green : .secondary)
                 }
@@ -1242,7 +1242,7 @@ struct UpdatesPreferencesView: View {
                 HStack {
                     Text("Automatic updates")
                     Spacer()
-                    Text(updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled")
+                    Text(automaticDownloadsValue)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(updaterDriver.automaticallyDownloadsUpdates ? .green : .secondary)
                 }
@@ -1271,7 +1271,7 @@ struct UpdatesPreferencesView: View {
             } header: {
                 Label("Software Updates", systemImage: "arrow.triangle.2.circlepath")
             } footer: {
-                Text("Sparkle checks \(updaterDriver.feedURL.host ?? "the configured appcast") for updates, downloads signed release archives from GitHub Releases, and installs them using the standard updater flow.")
+                Text(updateFooterText)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -1310,7 +1310,27 @@ struct UpdatesPreferencesView: View {
             return updaterDriver.feedURL.host ?? "please wait"
         }
 
-        return updaterDriver.canCheckForUpdates ? updaterDriver.feedURL.host ?? "configured" : "check configuration"
+        if updaterDriver.canCheckForUpdates {
+            return updaterDriver.feedURL.host ?? "configured"
+        }
+
+        return updaterDriver.availabilityReason ?? "check configuration"
+    }
+
+    private var automaticChecksValue: String {
+        updaterDriver.canCheckForUpdates ? (updaterDriver.automaticallyChecksForUpdates ? "Enabled" : "Disabled") : "Unavailable"
+    }
+
+    private var automaticDownloadsValue: String {
+        updaterDriver.canCheckForUpdates ? (updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled") : "Unavailable"
+    }
+
+    private var updateFooterText: String {
+        if let availabilityReason = updaterDriver.availabilityReason {
+            return "\(availabilityReason) Use GitHub Releases for manual installs."
+        }
+
+        return "Sparkle checks \(updaterDriver.feedURL.host ?? "the configured appcast") for updates, downloads signed release archives from GitHub Releases, and installs them using the standard updater flow."
     }
 }
 

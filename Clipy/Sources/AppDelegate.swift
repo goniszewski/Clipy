@@ -15,10 +15,40 @@ import RealmSwift
 import TipKit
 import Magnet
 import ServiceManagement
+import Security
 import Sparkle
 import os.log
 
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "App")
+
+private enum UpdaterAvailability {
+    case available(teamIdentifier: String)
+    case unavailable(reason: String)
+}
+
+private enum CodeSigningInspector {
+    static func teamIdentifier(for bundleURL: URL) -> String? {
+        var staticCode: SecStaticCode?
+        let createStatus = SecStaticCodeCreateWithPath(bundleURL as CFURL, SecCSFlags(), &staticCode)
+        guard createStatus == errSecSuccess, let staticCode else {
+            return nil
+        }
+
+        var signingInformation: CFDictionary?
+        let infoStatus = SecCodeCopySigningInformation(
+            staticCode,
+            SecCSFlags(rawValue: kSecCSSigningInformation),
+            &signingInformation
+        )
+
+        guard infoStatus == errSecSuccess,
+              let signingInformation = signingInformation as? [String: Any] else {
+            return nil
+        }
+
+        return signingInformation[kSecCodeInfoTeamIdentifier as String] as? String
+    }
+}
 
 final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = SparkleUpdaterDriver()
@@ -28,7 +58,9 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
     @Published private(set) var automaticallyChecksForUpdates = true
     @Published private(set) var automaticallyDownloadsUpdates = false
     @Published private(set) var feedURL = Constants.Application.appcastURL
+    @Published private(set) var availabilityReason: String?
 
+    private let updaterAvailability = SparkleUpdaterDriver.resolveUpdaterAvailability()
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
         updaterDelegate: self,
@@ -37,7 +69,11 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
 
     private override init() {
         super.init()
-        migrateLegacyFeedURLIfNeeded()
+        if case .available = updaterAvailability {
+            migrateLegacyFeedURLIfNeeded()
+        } else if case let .unavailable(reason) = updaterAvailability {
+            logger.info("Sparkle disabled for this build: \(reason, privacy: .public)")
+        }
         refreshState()
     }
 
@@ -49,20 +85,47 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
     }
 
     func refreshState() {
-        canCheckForUpdates = updaterController.updater.canCheckForUpdates
-        isCheckingForUpdates = updaterController.updater.sessionInProgress
-        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
-        automaticallyDownloadsUpdates = updaterController.updater.automaticallyDownloadsUpdates
-        feedURL = updaterController.updater.feedURL ?? Constants.Application.appcastURL
+        switch updaterAvailability {
+        case .available:
+            availabilityReason = nil
+            canCheckForUpdates = updaterController.updater.canCheckForUpdates
+            isCheckingForUpdates = updaterController.updater.sessionInProgress
+            automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
+            automaticallyDownloadsUpdates = updaterController.updater.automaticallyDownloadsUpdates
+            feedURL = updaterController.updater.feedURL ?? Constants.Application.appcastURL
+
+        case let .unavailable(reason):
+            availabilityReason = reason
+            canCheckForUpdates = false
+            isCheckingForUpdates = false
+            automaticallyChecksForUpdates = false
+            automaticallyDownloadsUpdates = false
+            feedURL = Constants.Application.appcastURL
+        }
     }
 
     func checkForUpdates() {
+        guard case .available = updaterAvailability else {
+            return
+        }
         updaterController.checkForUpdates(nil)
         refreshState()
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         refreshState()
+    }
+
+    private static func resolveUpdaterAvailability() -> UpdaterAvailability {
+        #if DEBUG
+            return .unavailable(reason: "Debug builds use local signing and do not publish Sparkle updates.")
+        #else
+            guard let teamIdentifier = CodeSigningInspector.teamIdentifier(for: Bundle.main.bundleURL) else {
+                return .unavailable(reason: "This build is not Developer ID-signed, so automatic updates are unavailable.")
+            }
+
+            return .available(teamIdentifier: teamIdentifier)
+        #endif
     }
 }
 
@@ -84,6 +147,9 @@ class AppDelegate: NSObject, NSMenuItemValidation {
         if menuItem.action == #selector(AppDelegate.clearAllHistory) {
             guard let realm = Realm.safeInstance() else { return false }
             return !realm.objects(CPYClip.self).isEmpty
+        }
+        if menuItem.action == #selector(AppDelegate.checkForUpdates(_:)) {
+            return updaterDriver.canCheckForUpdates && !updaterDriver.isCheckingForUpdates
         }
         return true
     }
