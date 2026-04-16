@@ -3,12 +3,12 @@
     <channel>
         <title>Clipy</title>
         <item>
-            <title>26.4.0</title>
-            <pubDate>Wed, 15 Apr 2026 14:07:42 +0000</pubDate>
-            <sparkle:version>26.4.0</sparkle:version>
-            <sparkle:shortVersionString>26.4.0</sparkle:shortVersionString>
+            <title>26.4.1</title>
+            <pubDate>Thu, 16 Apr 2026 08:06:19 +0000</pubDate>
+            <sparkle:version>26.4.1</sparkle:version>
+            <sparkle:shortVersionString>26.4.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/goniszewski/Clipy/releases/download/v26.4.0/Clipy-26.4.0.zip" length="9288172" type="application/octet-stream" sparkle:edSignature="sSoIMREvdRr3Lng8e9qOFcySZ9kAUYR+3Zm10PhFjZP13SugiSa87dF94mfHS8tc1OJV/i0cWqeTZMrhhqTpBA=="/>
+            <enclosure url="https://github.com/goniszewski/Clipy/releases/download/v26.4.1/Clipy-26.4.1.zip" length="9288391" type="application/octet-stream" sparkle:edSignature="szP2A3TpdGu9CqmzGWWa4/OkpU1cfNZoT3SJ3eZqPkVtJ4Hg/k9rX2LvwikFhlLa0x0JZlXJd4D4udFBx9SbCg=="/>
         </item>
     </channel>
 </rss>
