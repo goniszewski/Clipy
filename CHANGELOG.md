@@ -7,6 +7,12 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+### Added
+- Added a GitHub Releases fallback in Preferences so unsigned or manual-install builds can still check for and open the latest release
+
+### Changed
+- Expanded history menu keyboard navigation so numbered parent ranges can be selected directly and `Backspace` or `Left Arrow` returns to the parent menu
+
 ### Fixed
 - Disabled Sparkle in manual or debug builds that do not carry a Developer ID signature, avoiding invalid in-app update prompts
 - Stopped publishing Sparkle appcasts for unsigned releases, which Sparkle rejects as improperly signed updates

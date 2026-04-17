@@ -78,7 +78,9 @@ extension MenuManager {
         case .snippet:
             menu = snippetMenu
         }
-        menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        if let menu {
+            presentMenu(menu)
+        }
     }
 
     @MainActor
@@ -107,7 +109,7 @@ extension MenuManager {
                 folderMenu.addItem(subMenuItem)
                 index += 1
         }
-        folderMenu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        presentMenu(folderMenu)
     }
 
     @MainActor
@@ -140,6 +142,45 @@ extension MenuManager {
         let processed = SnippetVariableProcessor.process(snippet.content)
         AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
         AppEnvironment.current.pasteService.paste()
+    }
+
+    private func presentMenu(_ menu: NSMenu) {
+        let backspaceMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            return self.remapBackspaceToLeftArrow(event)
+        }
+
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+
+        if let backspaceMonitor {
+            NSEvent.removeMonitor(backspaceMonitor)
+        }
+    }
+
+    private func remapBackspaceToLeftArrow(_ event: NSEvent) -> NSEvent? {
+        guard event.type == .keyDown,
+              event.keyCode == 51 else {
+            return event
+        }
+
+        let relevantModifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let disallowedModifiers: NSEvent.ModifierFlags = [.command, .control, .option, .function]
+        guard relevantModifiers.isDisjoint(with: disallowedModifiers) else {
+            return event
+        }
+
+        let leftArrowCharacter = String(Character(UnicodeScalar(Int(NSLeftArrowFunctionKey))!))
+
+        return NSEvent.keyEvent(with: .keyDown,
+                                location: event.locationInWindow,
+                                modifierFlags: event.modifierFlags,
+                                timestamp: event.timestamp,
+                                windowNumber: event.windowNumber,
+                                context: nil,
+                                characters: leftArrowCharacter,
+                                charactersIgnoringModifiers: leftArrowCharacter,
+                                isARepeat: event.isARepeat,
+                                keyCode: 123)
     }
 }
 
@@ -327,7 +368,7 @@ private extension MenuManager {
         return (isMarkWithNumber) ? "\(listNumber). \(title)" : title
     }
 
-    func makeSubmenuItem(_ count: Int, start: Int, end: Int, numberOfItems: Int) -> NSMenuItem {
+    func makeSubmenuItem(_ count: Int, start: Int, end: Int, numberOfItems: Int, listNumber: Int? = nil, parentIndex: Int? = nil) -> NSMenuItem {
         var count = count
         if start == 0 {
             count -= 1
@@ -336,13 +377,17 @@ private extension MenuManager {
         if end < lastNumber {
             lastNumber = end
         }
-        let menuItemTitle = "\(count + 1) - \(lastNumber)"
-        return makeSubmenuItem(menuItemTitle)
+        let rangeTitle = "\(count + 1) - \(lastNumber)"
+        let isMarkWithNumber = AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.menuItemsAreMarkedWithNumbers)
+        let numberedTitle = menuItemTitle(rangeTitle, listNumber: listNumber ?? count + 1, isMarkWithNumber: isMarkWithNumber)
+        let addNumbericKeyEquivalents = AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.addNumericKeyEquivalents)
+        let keyEquivalent = addNumbericKeyEquivalents ? (parentIndex.flatMap(numericKeyEquivalent(for:)) ?? "") : ""
+        return makeSubmenuItem(numberedTitle, keyEquivalent: keyEquivalent)
     }
 
-    func makeSubmenuItem(_ title: String) -> NSMenuItem {
+    func makeSubmenuItem(_ title: String, keyEquivalent: String = "") -> NSMenuItem {
         let subMenu = NSMenu(title: "")
-        let subMenuItem = NSMenuItem(title: title, action: nil)
+        let subMenuItem = NSMenuItem(title: title, action: nil, keyEquivalent: keyEquivalent)
         subMenuItem.submenu = subMenu
         subMenuItem.image = (AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.showIconInTheMenu)) ? folderIcon : nil
         return subMenuItem
@@ -377,6 +422,17 @@ private extension MenuManager {
 
         return titleString as String
     }
+
+    func numericKeyEquivalent(for index: Int) -> String? {
+        guard index < kMaxKeyEquivalents else { return nil }
+
+        let isStartFromZero = AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.menuItemsTitleStartWithZero)
+        var shortCutNumber = isStartFromZero ? index : index + 1
+        if shortCutNumber == kMaxKeyEquivalents {
+            shortCutNumber = 0
+        }
+        return "\(shortCutNumber)"
+    }
 }
 
 // MARK: - Clips
@@ -401,6 +457,8 @@ private extension MenuManager {
         var listNumber = firstIndex
         var subMenuCount = placeInLine
         var subMenuIndex = 1 + placeInLine
+        var parentListNumber = firstIndex
+        var parentIndex = 0
 
         let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
         // Show pinned items first, then sort by time
@@ -413,9 +471,16 @@ private extension MenuManager {
         for clip in clipResults {
             if placeInLine < 1 || placeInLine - 1 < i {
                 if i == subMenuCount {
-                    let subMenuItem = makeSubmenuItem(subMenuCount, start: firstIndex, end: currentSize, numberOfItems: placeInsideFolder)
+                    let subMenuItem = makeSubmenuItem(subMenuCount,
+                                                      start: firstIndex,
+                                                      end: currentSize,
+                                                      numberOfItems: placeInsideFolder,
+                                                      listNumber: parentListNumber,
+                                                      parentIndex: parentIndex)
                     menu.addItem(subMenuItem)
                     listNumber = firstIndex
+                    parentListNumber = incrementListNumber(parentListNumber, max: kMaxKeyEquivalents, start: firstIndex)
+                    parentIndex += 1
                 }
 
                 if let subMenu = menu.item(at: subMenuIndex)?.submenu {
@@ -448,14 +513,8 @@ private extension MenuManager {
 
         var keyEquivalent = ""
 
-        if addNumbericKeyEquivalents && (index <= kMaxKeyEquivalents) {
-            let isStartFromZero = AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.menuItemsTitleStartWithZero)
-
-            var shortCutNumber = (isStartFromZero) ? index : index + 1
-            if shortCutNumber == kMaxKeyEquivalents {
-                shortCutNumber = 0
-            }
-            keyEquivalent = "\(shortCutNumber)"
+        if addNumbericKeyEquivalents, let numericKeyEquivalent = numericKeyEquivalent(for: index) {
+            keyEquivalent = numericKeyEquivalent
         }
 
         let primaryPboardType = NSPasteboard.PasteboardType(rawValue: clip.primaryType)
