@@ -1344,6 +1344,7 @@ struct UpdatesPreferencesView: View {
         if !updaterDriver.usesSparkle, let latestReleaseVersion = updaterDriver.latestReleaseVersion {
             return latestReleaseVersion
         }
+
         return updaterDriver.availabilityReason ?? "check configuration"
     }
 
@@ -1391,6 +1392,7 @@ struct UpdatesPreferencesView: View {
             if updaterDriver.isManualUpdateAvailable, let latestReleaseVersion = updaterDriver.latestReleaseVersion {
                 return "\(availabilityReason) Version \(latestReleaseVersion) is available on GitHub Releases for manual install."
             }
+
             return "\(availabilityReason) Use GitHub Releases for manual installs."
         }
 

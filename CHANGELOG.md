@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and starting on April 15, 2026 this project uses calendar-based versions in the format `YY.M.patch`.
 
-## [26.4.4] - 2026-04-16
+## [Unreleased]
 
 ### Fixed
 - Disabled Sparkle in manual or debug builds that do not carry a Developer ID signature, avoiding invalid in-app update prompts

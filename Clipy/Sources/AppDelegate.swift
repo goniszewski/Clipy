@@ -47,6 +47,7 @@ private struct GitHubRelease: Decodable {
             .replacingOccurrences(of: #"^[vV]"#, with: "", options: .regularExpression)
     }
 }
+
 private enum CodeSigningInspector {
     static func teamIdentifier(for bundleURL: URL) -> String? {
         var staticCode: SecStaticCode?
@@ -70,6 +71,7 @@ private enum CodeSigningInspector {
         return signingInformation[kSecCodeInfoTeamIdentifier as String] as? String
     }
 }
+
 final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = SparkleUpdaterDriver()
 
@@ -84,7 +86,6 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
     private let updaterAvailability = SparkleUpdaterDriver.resolveUpdaterAvailability()
     private let installedVersion = Bundle.main.appVersion
     private var manualReleaseCheckTask: Task<Void, Never>?
-
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
         updaterDelegate: self,
