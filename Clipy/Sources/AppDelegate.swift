@@ -178,6 +178,20 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
         return false
     }
 
+    var didManualReleaseCheckFail: Bool {
+        if case .failed = manualReleaseState {
+            return true
+        }
+        return false
+    }
+
+    var manualReleaseFailureMessage: String? {
+        if case let .failed(message) = manualReleaseState {
+            return message
+        }
+        return nil
+    }
+
     var manualReleaseStatusText: String {
         switch manualReleaseState {
         case .idle:
@@ -221,7 +235,7 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
             } catch {
                 guard !Task.isCancelled else { return }
 
-                let message = (error as? LocalizedError)?.errorDescription ?? "Could not check GitHub releases."
+                let message = error.localizedDescription
                 DispatchQueue.main.async {
                     self.isCheckingForUpdates = false
                     self.manualReleaseState = .failed(message: message)

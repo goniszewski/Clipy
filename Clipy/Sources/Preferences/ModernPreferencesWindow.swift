@@ -1305,6 +1305,10 @@ struct UpdatesPreferencesView: View {
             return updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
         }
 
+        if updaterDriver.didManualReleaseCheckFail {
+            return "GitHub release check failed"
+        }
+
         return updaterDriver.isManualUpdateAvailable ? "Manual update available" : "Manual release checks ready"
     }
 
@@ -1315,6 +1319,10 @@ struct UpdatesPreferencesView: View {
 
         if updaterDriver.usesSparkle {
             return updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        }
+
+        if updaterDriver.didManualReleaseCheckFail {
+            return "exclamationmark.triangle.fill"
         }
 
         return updaterDriver.isManualUpdateAvailable ? "arrow.down.circle.fill" : "info.circle.fill"
@@ -1329,6 +1337,10 @@ struct UpdatesPreferencesView: View {
             return updaterDriver.canCheckForUpdates ? .green : .orange
         }
 
+        if updaterDriver.didManualReleaseCheckFail {
+            return .orange
+        }
+
         return updaterDriver.isManualUpdateAvailable ? .orange : .secondary
     }
 
@@ -1339,6 +1351,10 @@ struct UpdatesPreferencesView: View {
 
         if updaterDriver.usesSparkle, updaterDriver.canCheckForUpdates {
             return updaterDriver.feedURL.host ?? "configured"
+        }
+
+        if let manualReleaseFailureMessage = updaterDriver.manualReleaseFailureMessage {
+            return manualReleaseFailureMessage
         }
 
         if !updaterDriver.usesSparkle, let latestReleaseVersion = updaterDriver.latestReleaseVersion {
@@ -1373,7 +1389,11 @@ struct UpdatesPreferencesView: View {
     }
 
     private var latestReleaseColor: SwiftUI.Color {
-        updaterDriver.isManualUpdateAvailable ? .orange : .secondary
+        if updaterDriver.didManualReleaseCheckFail {
+            return .orange
+        }
+
+        return updaterDriver.isManualUpdateAvailable ? .orange : .secondary
     }
 
     private var checkButtonTitle: String {
