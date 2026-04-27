@@ -1248,19 +1248,34 @@ struct UpdatesPreferencesView: View {
                 }
 
                 HStack {
-                    Text("Appcast")
+                    Text(updateSourceTitle)
                     Spacer()
-                    Text(updaterDriver.feedURL.absoluteString)
+                    Text(updateSourceValue)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.trailing)
                 }
 
                 HStack {
-                    Button("Check for Updates") {
+                    Text("Latest release")
+                    Spacer()
+                    Text(latestReleaseValue)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(latestReleaseColor)
+                        .multilineTextAlignment(.trailing)
+                }
+
+                HStack {
+                    Button(checkButtonTitle) {
                         updaterDriver.checkForUpdates()
                     }
-                    .disabled(!updaterDriver.canCheckForUpdates || updaterDriver.isCheckingForUpdates)
+                    .disabled(!updaterDriver.canTriggerUpdateCheck || updaterDriver.isCheckingForUpdates)
+
+                    if updaterDriver.isManualUpdateAvailable {
+                        Button(openLatestReleaseButtonTitle) {
+                            updaterDriver.openLatestReleasePage()
+                        }
+                    }
 
                     Spacer()
 
@@ -1283,10 +1298,18 @@ struct UpdatesPreferencesView: View {
 
     private var updateReadinessTitle: String {
         if updaterDriver.isCheckingForUpdates {
-            return "Sparkle checking for updates"
+            return updaterDriver.usesSparkle ? "Sparkle checking for updates" : "Checking GitHub releases"
         }
 
-        return updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
+        if updaterDriver.usesSparkle {
+            return updaterDriver.canCheckForUpdates ? "Sparkle updater ready" : "Sparkle updater unavailable"
+        }
+
+        if updaterDriver.didManualReleaseCheckFail {
+            return "GitHub release check failed"
+        }
+
+        return updaterDriver.isManualUpdateAvailable ? "Manual update available" : "Manual release checks ready"
     }
 
     private var updateReadinessIcon: String {
@@ -1294,7 +1317,15 @@ struct UpdatesPreferencesView: View {
             return "arrow.triangle.2.circlepath"
         }
 
-        return updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        if updaterDriver.usesSparkle {
+            return updaterDriver.canCheckForUpdates ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+        }
+
+        if updaterDriver.didManualReleaseCheckFail {
+            return "exclamationmark.triangle.fill"
+        }
+
+        return updaterDriver.isManualUpdateAvailable ? "arrow.down.circle.fill" : "info.circle.fill"
     }
 
     private var updateReadinessColor: SwiftUI.Color {
@@ -1302,31 +1333,86 @@ struct UpdatesPreferencesView: View {
             return .secondary
         }
 
-        return updaterDriver.canCheckForUpdates ? .green : .orange
+        if updaterDriver.usesSparkle {
+            return updaterDriver.canCheckForUpdates ? .green : .orange
+        }
+
+        if updaterDriver.didManualReleaseCheckFail {
+            return .orange
+        }
+
+        return updaterDriver.isManualUpdateAvailable ? .orange : .secondary
     }
 
     private var updateReadinessDetail: String {
         if updaterDriver.isCheckingForUpdates {
-            return updaterDriver.feedURL.host ?? "please wait"
+            return updaterDriver.usesSparkle ? (updaterDriver.feedURL.host ?? "please wait") : "api.github.com"
         }
 
-        if updaterDriver.canCheckForUpdates {
+        if updaterDriver.usesSparkle, updaterDriver.canCheckForUpdates {
             return updaterDriver.feedURL.host ?? "configured"
+        }
+
+        if let manualReleaseFailureMessage = updaterDriver.manualReleaseFailureMessage {
+            return manualReleaseFailureMessage
+        }
+
+        if !updaterDriver.usesSparkle, let latestReleaseVersion = updaterDriver.latestReleaseVersion {
+            return latestReleaseVersion
         }
 
         return updaterDriver.availabilityReason ?? "check configuration"
     }
 
     private var automaticChecksValue: String {
-        updaterDriver.canCheckForUpdates ? (updaterDriver.automaticallyChecksForUpdates ? "Enabled" : "Disabled") : "Unavailable"
+        updaterDriver.usesSparkle ? (updaterDriver.automaticallyChecksForUpdates ? "Enabled" : "Disabled") : "Manual only"
     }
 
     private var automaticDownloadsValue: String {
-        updaterDriver.canCheckForUpdates ? (updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled") : "Unavailable"
+        updaterDriver.usesSparkle ? (updaterDriver.automaticallyDownloadsUpdates ? "Enabled" : "Disabled") : "Manual only"
+    }
+
+    private var updateSourceTitle: String {
+        updaterDriver.usesSparkle ? "Appcast" : "Release source"
+    }
+
+    private var updateSourceValue: String {
+        updaterDriver.usesSparkle ? updaterDriver.feedURL.absoluteString : Constants.Application.latestReleaseAPIURL.absoluteString
+    }
+
+    private var latestReleaseValue: String {
+        if updaterDriver.isCheckingForUpdates && !updaterDriver.usesSparkle {
+            return "Checking..."
+        }
+
+        return updaterDriver.manualReleaseStatusText
+    }
+
+    private var latestReleaseColor: SwiftUI.Color {
+        if updaterDriver.didManualReleaseCheckFail {
+            return .orange
+        }
+
+        return updaterDriver.isManualUpdateAvailable ? .orange : .secondary
+    }
+
+    private var checkButtonTitle: String {
+        updaterDriver.usesSparkle ? "Check for Updates" : "Check GitHub Releases"
+    }
+
+    private var openLatestReleaseButtonTitle: String {
+        if let latestReleaseVersion = updaterDriver.latestReleaseVersion {
+            return "Download \(latestReleaseVersion)"
+        }
+        return "Open Release"
     }
 
     private var updateFooterText: String {
         if let availabilityReason = updaterDriver.availabilityReason {
+            if updaterDriver.isManualUpdateAvailable, let latestReleaseVersion = updaterDriver.latestReleaseVersion {
+                return "\(availabilityReason) Version \(latestReleaseVersion) is available on GitHub Releases for manual install."
+            }
+
             return "\(availabilityReason) Use GitHub Releases for manual installs."
         }
 

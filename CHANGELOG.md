@@ -5,11 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and starting on April 15, 2026 this project uses calendar-based versions in the format `YY.M.patch`.
 
+## [Unreleased]
+
+### Fixed
+- Surfaced manual GitHub release update-check failures in Preferences instead of failing silently
+
+## [26.4.5] - 2026-04-17
+
+### Added
+- Added a GitHub Releases fallback in Preferences so unsigned or manual-install builds can still check for and open the latest release
+
+### Changed
+- Expanded history menu keyboard navigation so numbered parent ranges can be selected directly and `Backspace` or `Left Arrow` returns to the parent menu
+
 ## [26.4.4] - 2026-04-16
 
 ### Fixed
 - Disabled Sparkle in manual or debug builds that do not carry a Developer ID signature, avoiding invalid in-app update prompts
 - Stopped publishing Sparkle appcasts for unsigned releases, which Sparkle rejects as improperly signed updates
+
+## [26.4.3] - 2026-04-16
+
+### Changed
+- Modernized the build, CI, and update workflow around explicit repo scripts and the GitHub Pages-hosted appcast setup
+- Xcode builds now skip `SwiftLint`, `SwiftGen`, and `BartyCrouch` by default; run the repo scripts explicitly when you want linting or generated outputs
 
 ## [26.4.2] - 2026-04-16
 
@@ -43,7 +62,7 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 - **Vault folders** — Touch ID / password-protected snippet folders using LocalAuthentication
 - **Clipboard queue (Collect Mode)** — collect multiple clips, paste merged or sequentially
 - **Modern preferences window** — SwiftUI settings with General, Shortcuts, Exclude Apps, Updates tabs
-- **Pin clips** — keep important clips at the top (`Cmd+P`)
+- **Pin clips** — keep important clips at the top (`Cmd+D`)
 - **Multi-select** — `Shift+Up/Down` to select multiple clips, bulk delete with `Cmd+Backspace`
 - **Two-digit quick select** — type two numbers rapidly to select items beyond 9
 - **Color code detection** — visual swatch preview for hex colors

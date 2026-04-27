@@ -13,8 +13,7 @@
 
 > *Built on [Clipy/Clipy](https://github.com/Clipy/Clipy), the original clipboard manager for macOS by [@naotaka](https://github.com/naotaka) and the Clipy Project. This fork is currently maintained by Robert Goniszewski.*
 
-<!-- TODO: Add demo GIF or video recorded with Screen Studio -->
-<!-- <p align="center"><img src="./Resources/demo.gif" width="700"></p> -->
+[Project page](https://goniszewski.github.io/Clipy) · [Demo video (MP4)](./docs/clipy-demo.mp4) · [Latest release](https://github.com/goniszewski/Clipy/releases/latest)
 
 ---
 
@@ -46,6 +45,16 @@ If the app is still blocked:
 
 This bypass is only needed for unsigned or unnotarized builds. Proper Developer ID-signed releases should launch normally.
 
+### Permissions
+
+Clipy can capture clipboard history immediately, but pasting selected history items or snippets into other apps requires Accessibility permission.
+
+1. Trigger a paste from Clipy for the first time
+2. Approve the prompt, or open `System Settings` → `Privacy & Security` → `Accessibility`
+3. Enable Clipy and retry the paste
+
+> Accessibility permission persists across updates — no need to re-grant.
+
 ### Build from Source
 
 ```bash
@@ -66,53 +75,22 @@ For example, the release cycle started on April 15, 2026 is `26.4.0`.
 
 ### Updating
 
-**Auto-update:** Preferences → Updates → **Check for Updates**. This is available only when the release workflow has a valid Sparkle private key and publishes an appcast.
+**Sparkle:** Preferences → Updates → **Check for Updates** when you're running a Developer ID-signed release with a published appcast.
 
-**Manual:** Download the latest DMG, drag to Applications (replace existing), and launch.
+**GitHub Releases fallback:** Preferences → Updates → **Check GitHub Releases** when you're running an unsigned or manual-install build.
+
+**Manual reinstall:** Download the latest DMG, drag to Applications (replace existing), and launch.
 
 If Gatekeeper blocks the app, follow the unsigned-build bypass steps above.
 
-> Accessibility permission persists across updates — no need to re-grant.
-
 ### Release Infrastructure
 
-Clipy's auto-update pipeline uses Sparkle with GitHub-hosted artifacts:
+Clipy supports two distribution modes:
 
-- `docs/appcast.xml` is published via GitHub Pages at `https://goniszewski.github.io/Clipy/appcast.xml` when `SPARKLE_PRIVATE_KEY` is configured
-- Sparkle `.zip` update archives are uploaded to GitHub Releases
-- `.dmg` archives are uploaded to GitHub Releases for manual installs
-- full trust on other Macs requires Developer ID signing and notarization
+- Developer ID-signed and notarized releases with Sparkle appcasts and in-app updates
+- Unsigned manual-download releases with a GitHub Releases fallback in Preferences
 
-Required GitHub Actions secrets:
-
-- `DEVELOPER_ID_CERTIFICATE_BASE64`
-- `DEVELOPER_ID_CERTIFICATE_PASSWORD`
-- `APPLE_TEAM_ID`
-- `APPLE_ID`
-- `APPLE_ID_APP_PASSWORD`
-- `SPARKLE_PRIVATE_KEY`
-
-`SPARKLE_PRIVATE_KEY` is the private EdDSA key exported from Sparkle's `generate_keys` tool. The public key is embedded in `Info.plist` as `SUPublicEDKey`.
-
-One-time GitHub setup:
-
-1. Enable GitHub Pages for this repository with source `main` and folder `/docs`
-2. Bootstrap the Sparkle keypair, update `SUPublicEDKey`, and store the private key as a GitHub secret:
-   ```bash
-   ./scripts/bootstrap-sparkle-key.sh
-   ```
-   This uses a repo-specific Sparkle keychain account by default and updates `SPARKLE_PRIVATE_KEY` on the current GitHub repo.
-3. If you prefer the manual flow, export the Sparkle private key from your login keychain:
-   ```bash
-   ./Pods/Sparkle/bin/generate_keys -x /tmp/clipy-sparkle-private-key
-   gh secret set SPARKLE_PRIVATE_KEY < /tmp/clipy-sparkle-private-key
-   rm /tmp/clipy-sparkle-private-key
-   ```
-4. Add the Apple signing and notarization secrets listed above
-
-If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts as manual-download releases only. Users can still install them by following the Gatekeeper bypass steps in the Install section above, but Sparkle appcasts are skipped because unsigned builds cannot be validated as automatic updates.
-
-If `SPARKLE_PRIVATE_KEY` is missing or empty, the Release workflow skips appcast generation and publishes a manual-download release only.
+Maintainer-facing signing, appcast, and GitHub Actions setup lives in [RELEASING.md](RELEASING.md).
 
 ### Local Verification
 
@@ -241,7 +219,7 @@ Collect multiple clips and paste them all at once — merged with a configurable
 
 ### Other Features
 
-- **Auto-update** — Sparkle checks the GitHub Pages appcast, downloads signed release archives from GitHub Releases, and installs updates using the standard macOS updater flow
+- **Updates** — Sparkle for signed releases, plus a GitHub Releases fallback for manual or unsigned installs
 - **Color code detection** with visual swatch preview
 - **Exclude apps** from clipboard monitoring
 - **Hotkey support** for history, snippets, and snippet folders

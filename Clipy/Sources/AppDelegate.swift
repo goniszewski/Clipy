@@ -26,6 +26,28 @@ private enum UpdaterAvailability {
     case unavailable(reason: String)
 }
 
+private enum ManualReleaseState {
+    case idle
+    case updateAvailable(version: String, url: URL)
+    case upToDate(version: String, url: URL)
+    case failed(message: String)
+}
+
+private struct GitHubRelease: Decodable {
+    let htmlURL: URL
+    let tagName: String
+
+    enum CodingKeys: String, CodingKey {
+        case htmlURL = "html_url"
+        case tagName = "tag_name"
+    }
+
+    var version: String {
+        tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"^[vV]"#, with: "", options: .regularExpression)
+    }
+}
+
 private enum CodeSigningInspector {
     static func teamIdentifier(for bundleURL: URL) -> String? {
         var staticCode: SecStaticCode?
@@ -59,8 +81,11 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
     @Published private(set) var automaticallyDownloadsUpdates = false
     @Published private(set) var feedURL = Constants.Application.appcastURL
     @Published private(set) var availabilityReason: String?
+    @Published private var manualReleaseState: ManualReleaseState = .idle
 
     private let updaterAvailability = SparkleUpdaterDriver.resolveUpdaterAvailability()
+    private let installedVersion = Bundle.main.appVersion
+    private var manualReleaseCheckTask: Task<Void, Never>?
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
         updaterDelegate: self,
@@ -105,15 +130,148 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
     }
 
     func checkForUpdates() {
-        guard case .available = updaterAvailability else {
+        switch updaterAvailability {
+        case .available:
+            updaterController.checkForUpdates(nil)
+            refreshState()
+
+        case .unavailable:
+            checkGitHubRelease()
+        }
+    }
+
+    func openLatestReleasePage() {
+        switch manualReleaseState {
+        case let .updateAvailable(_, url), let .upToDate(_, url):
+            NSWorkspace.shared.open(url)
+
+        case .idle, .failed:
+            NSWorkspace.shared.open(Constants.Application.releasesURL)
+        }
+    }
+
+    var usesSparkle: Bool {
+        if case .available = updaterAvailability {
+            return true
+        }
+        return false
+    }
+
+    var canTriggerUpdateCheck: Bool {
+        usesSparkle ? canCheckForUpdates : !isCheckingForUpdates
+    }
+
+    var latestReleaseVersion: String? {
+        switch manualReleaseState {
+        case let .updateAvailable(version, _), let .upToDate(version, _):
+            return version
+
+        case .idle, .failed:
+            return nil
+        }
+    }
+
+    var isManualUpdateAvailable: Bool {
+        if case .updateAvailable = manualReleaseState {
+            return true
+        }
+        return false
+    }
+
+    var didManualReleaseCheckFail: Bool {
+        if case .failed = manualReleaseState {
+            return true
+        }
+        return false
+    }
+
+    var manualReleaseFailureMessage: String? {
+        if case let .failed(message) = manualReleaseState {
+            return message
+        }
+        return nil
+    }
+
+    var manualReleaseStatusText: String {
+        switch manualReleaseState {
+        case .idle:
+            return "Not checked"
+
+        case let .updateAvailable(version, _):
+            return "Version \(version) available"
+
+        case let .upToDate(version, _):
+            return "Up to date (\(version))"
+
+        case let .failed(message):
+            return message
+        }
+    }
+
+    private func checkGitHubRelease() {
+        guard !isCheckingForUpdates else {
             return
         }
-        updaterController.checkForUpdates(nil)
-        refreshState()
+
+        isCheckingForUpdates = true
+        manualReleaseState = .idle
+        manualReleaseCheckTask?.cancel()
+        manualReleaseCheckTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let release = try await Self.fetchLatestGitHubRelease()
+                guard !Task.isCancelled else { return }
+
+                DispatchQueue.main.async {
+                    self.isCheckingForUpdates = false
+
+                    if release.version.isVersion(newerThan: self.installedVersion) {
+                        self.manualReleaseState = .updateAvailable(version: release.version, url: release.htmlURL)
+                    } else {
+                        self.manualReleaseState = .upToDate(version: release.version, url: release.htmlURL)
+                    }
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                let message = error.localizedDescription
+                DispatchQueue.main.async {
+                    self.isCheckingForUpdates = false
+                    self.manualReleaseState = .failed(message: message)
+                }
+            }
+        }
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         refreshState()
+    }
+
+    private static func fetchLatestGitHubRelease() async throws -> GitHubRelease {
+        var request = URLRequest(url: Constants.Application.latestReleaseAPIURL)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("Clipy/\(Bundle.main.appVersion)", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: NSURLErrorDomain,
+                code: NSURLErrorBadServerResponse,
+                userInfo: [NSLocalizedDescriptionKey: "GitHub did not return a valid release response."]
+            )
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            let statusError = HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+            throw NSError(
+                domain: NSURLErrorDomain,
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "GitHub release lookup failed: \(statusError)."]
+            )
+        }
+
+        return try JSONDecoder().decode(GitHubRelease.self, from: data)
     }
 
     private static func resolveUpdaterAvailability() -> UpdaterAvailability {
@@ -126,6 +284,12 @@ final class SparkleUpdaterDriver: NSObject, ObservableObject, SPUUpdaterDelegate
 
             return .available(teamIdentifier: teamIdentifier)
         #endif
+    }
+}
+
+private extension String {
+    func isVersion(newerThan otherVersion: String) -> Bool {
+        compare(otherVersion, options: .numeric) == .orderedDescending
     }
 }
 
@@ -149,7 +313,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
             return !realm.objects(CPYClip.self).isEmpty
         }
         if menuItem.action == #selector(AppDelegate.checkForUpdates(_:)) {
-            return updaterDriver.canCheckForUpdates && !updaterDriver.isCheckingForUpdates
+            return updaterDriver.canTriggerUpdateCheck && !updaterDriver.isCheckingForUpdates
         }
         return true
     }
