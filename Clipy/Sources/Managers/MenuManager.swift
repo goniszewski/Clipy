@@ -180,8 +180,8 @@ private extension MenuManager {
         // Current clipboard indicator
         addCurrentClipboardItem(clipMenu!)
 
-        // Recent clips (just a few for quick access)
-        addRecentClips(clipMenu!, maxItems: 5)
+        // Clipboard history (respects Layout preferences: inline count, folder size, max history)
+        addHistoryItems(clipMenu!)
 
         // Search History — the main way to browse
         clipMenu?.addItem(NSMenuItem.separator())
@@ -379,6 +379,9 @@ private extension MenuManager {
         let placeInsideFolder = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInsideFolder)
         let maxHistory = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.maxHistorySize)
 
+        // Capture position offset so submenu lookups work even if the menu already has items
+        let menuOffset = menu.numberOfItems
+
         // History title
         let labelItem = NSMenuItem(title: L10n.history, action: nil)
         labelItem.isEnabled = false
@@ -392,7 +395,7 @@ private extension MenuManager {
         let firstIndex = firstIndexOfMenuItems()
         var listNumber = firstIndex
         var subMenuCount = placeInLine
-        var subMenuIndex = 1 + placeInLine
+        var subMenuIndex = menuOffset + 1 + placeInLine
 
         let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
         // Show pinned items first, then sort by time
