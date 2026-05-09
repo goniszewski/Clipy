@@ -959,6 +959,8 @@ h3{font-size:clamp(1.1rem,2vw,1.4rem);font-weight:700}
   padding:12px 0;
   list-style:none;
 }
+.changelog details summary{list-style:none}
+.changelog details summary::-webkit-details-marker{display:none}
 .changelog details summary::before{content:'+ ';color:var(--amber)}
 .changelog details[open] summary::before{content:'- '}
 .changelog details .detail-content{
