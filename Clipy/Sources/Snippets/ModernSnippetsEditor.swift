@@ -503,7 +503,28 @@ extension SnippetsEditorViewModel {
 struct ModernSnippetsEditorView: View {
     @StateObject private var viewModel = SnippetsEditorViewModel()
     @FocusState private var sidebarFocused: Bool
+    @State private var closeButtonHovered = false
     let onClose: () -> Void
+
+    private var closeButton: some View {
+        Button(action: onClose) {
+            ZStack {
+                Circle()
+                    .fill(closeButtonHovered ? Color.red.opacity(0.85) : Color.secondary.opacity(0.18))
+                    .frame(width: 14, height: 14)
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(closeButtonHovered ? Color.white : Color.secondary)
+                    .opacity(closeButtonHovered ? 1 : 0.7)
+            }
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("w", modifiers: .command)
+        .onHover { closeButtonHovered = $0 }
+        .padding(.top, 12)
+        .padding(.leading, 12)
+        .help("Close (\u{2318}W)")
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -520,6 +541,7 @@ struct ModernSnippetsEditorView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
+        .overlay(closeButton, alignment: .topLeading)
         .overlay(DevBadgeOverlay())
         .onAppear { viewModel.load() }
         .onChange(of: viewModel.needsRefocus) { _, needs in
@@ -1261,6 +1283,12 @@ class ModernSnippetsWindowController: NSWindowController {
         window.title = "Snippets"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        // Native traffic-light buttons sit in transparent space outside the rounded
+        // content area — hide them. The custom close button in SwiftUI handles clicks,
+        // and Cmd+W / Cmd+M still work natively via the styleMask flags.
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
         window.isMovableByWindowBackground = true
         window.backgroundColor = .clear
         window.isOpaque = false
