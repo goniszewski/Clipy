@@ -521,18 +521,27 @@ struct ModernSnippetsEditorView: View {
         .buttonStyle(.plain)
         .keyboardShortcut("w", modifiers: .command)
         .onHover { closeButtonHovered = $0 }
-        .padding(.top, 12)
         .padding(.leading, 12)
         .help("Close (\u{2318}W)")
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-                .frame(width: 260)
-            Divider().opacity(0.4)
-            editorPane
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            // Thin custom titlebar — provides space for the close button without
+            // overlapping the sidebar's search bar
+            HStack(spacing: 0) {
+                closeButton
+                Spacer()
+            }
+            .frame(height: 28)
+
+            HStack(spacing: 0) {
+                sidebar
+                    .frame(width: 260)
+                Divider().opacity(0.4)
+                editorPane
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .frame(width: 740, height: 520)
         .background(.regularMaterial)
@@ -541,7 +550,6 @@ struct ModernSnippetsEditorView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
-        .overlay(closeButton, alignment: .topLeading)
         .overlay(DevBadgeOverlay())
         .onAppear { viewModel.load() }
         .onChange(of: viewModel.needsRefocus) { _, needs in
