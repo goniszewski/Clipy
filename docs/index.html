@@ -1047,7 +1047,7 @@ footer{
     <div class="hero-text reveal">
       <div class="hero-badge glass">
         <span class="pulse"></span>
-        v2.1 Public Beta &mdash; Signed &amp; Notarized
+        v2.2 Public Beta &mdash; Signed &amp; Notarized
       </div>
       <h1>Your clipboard,<br><span class="gradient-amber">evolved.</span></h1>
       <p class="hero-sub">A clipboard manager for macOS that remembers everything, runs scripts, and keeps your secrets safe.</p>
@@ -1697,29 +1697,41 @@ footer{
 <section class="whats-new" id="whats-new">
   <div class="container">
     <div class="whats-new-heading reveal">
-      <h2>What's New in v2.1</h2>
+      <h2>What's New in v2.2</h2>
     </div>
     <div class="changelog reveal">
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Script Snippets
+        <span class="tag tag-green">Added</span> Script Snippets &mdash; run shell scripts and paste the output
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Ephemeral Paste
+        <span class="tag tag-green">Added</span> 14 built-in templates including AWS SSO, Secrets Manager, JSON, Base64, JWT
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Plugin System
+        <span class="tag tag-green">Added</span> Plugin System for custom clip processors via <code>~/.clipy/plugins/</code>
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Template Gallery with Config Forms
+        <span class="tag tag-green">Added</span> Ephemeral Paste &mdash; secrets bypass clipboard history by default
       </div>
       <div class="changelog-item">
-        <span class="tag tag-red">Security</span> Apple Developer ID Signing &amp; Notarization
+        <span class="tag tag-blue">Fixed</span> History folders now respect Layout preferences in the menu (#88)
       </div>
       <div class="changelog-item">
-        <span class="tag tag-red">Security</span> Auto-clear Pasteboard
+        <span class="tag tag-blue">Fixed</span> Edit Snippets window now has a close button (#90)
+      </div>
+      <div class="changelog-item">
+        <span class="tag tag-blue">Fixed</span> Pinned image clips show the pin indicator
+      </div>
+      <div class="changelog-item">
+        <span class="tag tag-red">Security</span> Plugins disabled by default; ephemeral auto-clear uses changeCount tracking
       </div>
     </div>
     <div class="changelog">
+      <details>
+        <summary>v2.1 highlights</summary>
+        <div class="detail-content">
+          Apple Developer ID signing &amp; notarization &middot; auto-update from GitHub Releases hardened &middot; bug fixes across the search panel and snippet picker.
+        </div>
+      </details>
       <details>
         <summary>v2.0 highlights</summary>
         <div class="detail-content">
