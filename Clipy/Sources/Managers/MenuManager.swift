@@ -280,14 +280,6 @@ private extension MenuManager {
         return subMenuItem
     }
 
-    func incrementListNumber(_ listNumber: NSInteger, max: NSInteger, start: NSInteger) -> NSInteger {
-        var listNumber = listNumber + 1
-        if listNumber == max && max == 10 && start == 1 {
-            listNumber = 0
-        }
-        return listNumber
-    }
-
     func trimTitle(_ title: String?) -> String {
         if title == nil { return "" }
         let theString = title!.trimmingCharacters(in: .whitespacesAndNewlines) as NSString
@@ -385,12 +377,12 @@ private extension MenuManager {
                 if let subMenu = menu.item(at: subMenuIndex)?.submenu {
                     let menuItem = makeClipMenuItem(clip, index: i, listNumber: listNumber)
                     subMenu.addItem(menuItem)
-                    listNumber = incrementListNumber(listNumber, max: placeInsideFolder, start: firstIndex)
+                    listNumber += 1
                 }
             } else {
                 let menuItem = makeClipMenuItem(clip, index: i, listNumber: listNumber)
                 menu.addItem(menuItem)
-                listNumber = incrementListNumber(listNumber, max: placeInLine, start: firstIndex)
+                listNumber += 1
             }
 
             i += 1
@@ -425,12 +417,7 @@ private extension MenuManager {
         let primaryPboardType = NSPasteboard.PasteboardType(rawValue: clip.primaryType)
         let clipString = clip.title
         let title = trimTitle(clipString)
-        var titleWithMark = menuItemTitle(title, listNumber: listNumber, isMarkWithNumber: isMarkWithNumber)
-
-        // Add pin indicator
-        if clip.isPinned {
-            titleWithMark = "\u{1F4CC} " + titleWithMark
-        }
+        let titleWithMark = menuItemTitle(title, listNumber: listNumber, isMarkWithNumber: isMarkWithNumber)
 
         let menuItem = NSMenuItem(title: titleWithMark, action: #selector(AppDelegate.selectClipMenuItem(_:)), keyEquivalent: keyEquivalent)
         menuItem.representedObject = clip.dataHash
@@ -476,6 +463,11 @@ private extension MenuManager {
             if let cached = ClipService.cachedThumbnail(forKey: clip.thumbnailPath) {
                 menuItem.image = cached
             }
+        }
+
+        // Pin indicator goes last so it survives type-specific title overrides above
+        if clip.isPinned {
+            menuItem.title = "\u{1F4CC} " + menuItem.title
         }
 
         return menuItem
