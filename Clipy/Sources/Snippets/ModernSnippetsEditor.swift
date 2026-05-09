@@ -510,11 +510,11 @@ struct ModernSnippetsEditorView: View {
         Button(action: onClose) {
             ZStack {
                 Circle()
-                    .fill(closeButtonHovered ? Color.red.opacity(0.85) : Color.secondary.opacity(0.18))
+                    .fill(closeButtonHovered ? SwiftUI.Color.red.opacity(0.85) : SwiftUI.Color.secondary.opacity(0.18))
                     .frame(width: 14, height: 14)
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .heavy))
-                    .foregroundStyle(closeButtonHovered ? Color.white : Color.secondary)
+                    .foregroundStyle(closeButtonHovered ? SwiftUI.Color.white : SwiftUI.Color.secondary)
                     .opacity(closeButtonHovered ? 1 : 0.7)
             }
         }
