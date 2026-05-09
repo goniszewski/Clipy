@@ -344,43 +344,11 @@ private extension MenuManager {
 
 // MARK: - Clips
 private extension MenuManager {
-    func addRecentClips(_ menu: NSMenu, maxItems: Int) {
-        guard let realm = realm else { return }
-
-        let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
-        let clipResults = realm.objects(CPYClip.self).sorted(byKeyPath: #keyPath(CPYClip.updateTime), ascending: ascending)
-
-        guard !clipResults.isEmpty else { return }
-
-        let labelItem = NSMenuItem(title: L10n.history, action: nil)
-        labelItem.isEnabled = false
-        if let historyImage = NSImage(systemSymbolName: "clock.arrow.trianglehead.counterclockwise.rotate.90", accessibilityDescription: "History") {
-            historyImage.isTemplate = true
-            labelItem.image = historyImage
-        }
-        menu.addItem(labelItem)
-
-        let firstIndex = firstIndexOfMenuItems()
-        var listNumber = firstIndex
-        var count = 0
-
-        for clip in clipResults {
-            let menuItem = makeClipMenuItem(clip, index: count, listNumber: listNumber)
-            menu.addItem(menuItem)
-            listNumber = incrementListNumber(listNumber, max: maxItems, start: firstIndex)
-            count += 1
-            if count >= maxItems { break }
-        }
-    }
-
     func addHistoryItems(_ menu: NSMenu) {
         guard let realm = realm else { return }
         let placeInLine = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInline)
         let placeInsideFolder = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInsideFolder)
         let maxHistory = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.maxHistorySize)
-
-        // Capture position offset so submenu lookups work even if the menu already has items
-        let menuOffset = menu.numberOfItems
 
         // History title
         let labelItem = NSMenuItem(title: L10n.history, action: nil)
@@ -391,11 +359,12 @@ private extension MenuManager {
         }
         menu.addItem(labelItem)
 
-        // History
+        // Submenus appear after the label and any inline clips. Tolerates items added
+        // to the parent menu before this function is called (e.g. clipboard header).
         let firstIndex = firstIndexOfMenuItems()
         var listNumber = firstIndex
         var subMenuCount = placeInLine
-        var subMenuIndex = menuOffset + 1 + placeInLine
+        var subMenuIndex = menu.numberOfItems + placeInLine
 
         let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
         // Show pinned items first, then sort by time
