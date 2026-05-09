@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Script snippets** — new snippet type that runs shell scripts and pastes the output. Configurable shell (`/bin/bash`, `/bin/zsh`, `/bin/sh`, `/usr/bin/python3`), per-snippet timeout, and a Test Run button in the editor.
-- **Template gallery** — 15 built-in script templates with parameter forms:
+- **Template gallery** — 14 built-in script templates with parameter forms:
   - **AWS**: SSO Credentials, Secret Fetch (Secrets Manager), Secret Field (JSON key extraction), SSM Parameter
   - **Format**: JSON Pretty Print, JSON Minify
   - **Encode**: Base64 Encode/Decode, URL Encode
