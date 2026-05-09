@@ -503,15 +503,45 @@ extension SnippetsEditorViewModel {
 struct ModernSnippetsEditorView: View {
     @StateObject private var viewModel = SnippetsEditorViewModel()
     @FocusState private var sidebarFocused: Bool
+    @State private var closeButtonHovered = false
     let onClose: () -> Void
 
+    private var closeButton: some View {
+        Button(action: onClose) {
+            ZStack {
+                Circle()
+                    .fill(closeButtonHovered ? SwiftUI.Color.red.opacity(0.85) : SwiftUI.Color.secondary.opacity(0.18))
+                    .frame(width: 14, height: 14)
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(closeButtonHovered ? SwiftUI.Color.white : SwiftUI.Color.secondary)
+                    .opacity(closeButtonHovered ? 1 : 0.7)
+            }
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("w", modifiers: .command)
+        .onHover { closeButtonHovered = $0 }
+        .padding(.leading, 12)
+        .help("Close (\u{2318}W)")
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-                .frame(width: 260)
-            Divider().opacity(0.4)
-            editorPane
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 0) {
+            // Thin custom titlebar — provides space for the close button without
+            // overlapping the sidebar's search bar
+            HStack(spacing: 0) {
+                closeButton
+                Spacer()
+            }
+            .frame(height: 28)
+
+            HStack(spacing: 0) {
+                sidebar
+                    .frame(width: 260)
+                Divider().opacity(0.4)
+                editorPane
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .frame(width: 740, height: 520)
         .background(.regularMaterial)
@@ -1254,13 +1284,16 @@ class ModernSnippetsWindowController: NSWindowController {
     private init() {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 740, height: 520),
-            styleMask: [.titled, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: true
         )
         window.title = "Snippets"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        // Native traffic-light buttons sit in transparent space outside the rounded
+        // content area — hide them. The custom close button in SwiftUI handles clicks,
+        // and Cmd+W / Cmd+M still work natively via the styleMask flags.
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
