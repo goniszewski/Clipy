@@ -166,6 +166,8 @@ class SnippetSpec: QuickSpec {
             }
         }
 
+        describeEphemeralPasteBehavior()
+
         describe("Script execution service") {
 
             it("captures stdout exactly up to the output cap") {
@@ -259,5 +261,87 @@ class SnippetSpec: QuickSpec {
             }
         }
 
+    }
+
+    private class func describeEphemeralPasteBehavior() {
+        describe("Ephemeral paste behavior") {
+
+            it("consumes only the registered pasteboard change count") {
+                let service = ClipService()
+
+                service.skipCapture(forChangeCount: 12)
+
+                expect(service.shouldSkipCapture(forChangeCount: 11)).to(beFalse())
+                expect(service.shouldSkipCapture(forChangeCount: 12)).to(beTrue())
+                expect(service.shouldSkipCapture(forChangeCount: 12)).to(beFalse())
+            }
+
+            it("registers the exact pasteboard change written by an ephemeral paste") {
+                var copiedStrings = [String]()
+                var skippedChangeCounts = [Int]()
+                var didPaste = false
+
+                let coordinator = EphemeralPasteCoordinator(
+                    copyString: { string in
+                        copiedStrings.append(string)
+                        return 42
+                    },
+                    currentChangeCount: { 42 },
+                    clearContents: { 43 },
+                    registerSkip: { skippedChangeCounts.append($0) },
+                    paste: { didPaste = true },
+                    scheduler: { _, _ in }
+                )
+
+                coordinator.paste("secret", autoClearDelay: 0)
+
+                expect(copiedStrings) == ["secret"]
+                expect(skippedChangeCounts) == [42]
+                expect(didPaste).to(beTrue())
+            }
+
+            it("auto-clears ephemeral content only while the pasteboard is unchanged") {
+                var currentChangeCount = 42
+                var clearCount = 0
+                var skippedChangeCounts = [Int]()
+                var scheduledDelay: TimeInterval?
+                var scheduledAction: (() -> Void)?
+
+                let coordinator = EphemeralPasteCoordinator(
+                    copyString: { _ in 42 },
+                    currentChangeCount: { currentChangeCount },
+                    clearContents: {
+                        clearCount += 1
+                        currentChangeCount = 43
+                        return currentChangeCount
+                    },
+                    registerSkip: { skippedChangeCounts.append($0) },
+                    paste: {},
+                    scheduler: { delay, action in
+                        scheduledDelay = delay
+                        scheduledAction = action
+                    }
+                )
+
+                coordinator.paste("secret", autoClearDelay: 15)
+                scheduledAction?()
+
+                expect(scheduledDelay) == 15
+                expect(clearCount) == 1
+                expect(skippedChangeCounts) == [42, 43]
+
+                currentChangeCount = 42
+                clearCount = 0
+                skippedChangeCounts.removeAll()
+                scheduledAction = nil
+
+                coordinator.paste("secret", autoClearDelay: 15)
+                currentChangeCount = 99
+                scheduledAction?()
+
+                expect(clearCount) == 0
+                expect(skippedChangeCounts) == [42]
+            }
+        }
     }
 }

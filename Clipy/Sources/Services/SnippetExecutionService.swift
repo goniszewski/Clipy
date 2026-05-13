@@ -40,10 +40,11 @@ final class SnippetExecutionService {
         },
         paste: { text, isEphemeral in
             if isEphemeral {
-                AppEnvironment.current.clipService.incrementChangeCount()
+                AppEnvironment.current.pasteService.pasteEphemeral(with: text)
+            } else {
+                AppEnvironment.current.pasteService.copyToPasteboard(with: text)
+                AppEnvironment.current.pasteService.paste()
             }
-            AppEnvironment.current.pasteService.copyToPasteboard(with: text)
-            AppEnvironment.current.pasteService.paste()
         },
         presentError: { message in
             let alert = NSAlert()

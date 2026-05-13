@@ -93,6 +93,7 @@ struct Constants {
         static let collectCrashReport = "kCPYCollectCrashReport"
         static let showColorPreviewInTheMenu = "kCPYPrefShowColorPreviewInTheMenu"
         static let clearHistoryIncludesPinned = "kCPYPrefClearHistoryIncludesPinned"
+        static let ephemeralAutoClearSeconds = "kCPYPrefEphemeralAutoClearSeconds"
     }
 
     struct Beta {

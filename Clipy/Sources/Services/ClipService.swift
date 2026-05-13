@@ -24,8 +24,10 @@ final class ClipService {
     private var latestClipUpdateTime: Int?
     private var storeTypes = [String: NSNumber]()
     private let lock = NSRecursiveLock(name: "com.clipy-app.Clipy.ClipUpdatable")
+    private let skipLock = NSLock()
     private var monitorTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
+    private var skippedChangeCounts = Set<Int>()
 
     // MARK: - Thumbnail Cache
     private static let thumbnailCache = NSCache<NSString, NSImage>()
@@ -124,6 +126,18 @@ final class ClipService {
         cachedChangeCount += 1
     }
 
+    func skipCapture(forChangeCount changeCount: Int) {
+        skipLock.lock()
+        skippedChangeCounts.insert(changeCount)
+        skipLock.unlock()
+    }
+
+    func shouldSkipCapture(forChangeCount changeCount: Int) -> Bool {
+        skipLock.lock()
+        defer { skipLock.unlock() }
+        return skippedChangeCounts.remove(changeCount) != nil
+    }
+
     func markPasted(_ clip: CPYClip) {
         guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting) else { return }
         guard let realm = Realm.safeInstance() else { return }
@@ -142,6 +156,11 @@ final class ClipService {
 extension ClipService {
     fileprivate func create() {
         lock.lock(); defer { lock.unlock() }
+
+        if shouldSkipCapture(forChangeCount: NSPasteboard.general.changeCount) {
+            logger.debug("Skipping clipboard capture for a registered pasteboard change")
+            return
+        }
 
         // Store types
         if !storeTypes.values.contains(NSNumber(value: true)) { return }

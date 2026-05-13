@@ -76,21 +76,21 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 
 ### Phase 4: Ephemeral Paste
 
-- [ ] Implement ephemeral paste as a first-class behavior.
-- [ ] Fix PR #3's change-count bug:
+- [x] Implement ephemeral paste as a first-class behavior.
+- [x] Fix PR #3's change-count bug:
   - [ ] Either record `NSPasteboard.general.changeCount + 1` before writing.
-  - [ ] Or register the skip token immediately after the pasteboard write.
-- [ ] Ensure script output marked ephemeral is not saved to clipboard history.
-- [ ] Ensure auto-clear only clears the pasteboard if the pasteboard has not changed since the ephemeral write.
-- [ ] Add user preference for auto-clear delay:
-  - [ ] Off
-  - [ ] 15 seconds
-  - [ ] 30 seconds
-  - [ ] 60 seconds
-- [ ] Pick a default delay deliberately.
-- [ ] Avoid wiping user clipboard content copied after the script output.
+  - [x] Or register the skip token immediately after the pasteboard write.
+- [x] Ensure script output marked ephemeral is not saved to clipboard history.
+- [x] Ensure auto-clear only clears the pasteboard if the pasteboard has not changed since the ephemeral write.
+- [x] Add user preference for auto-clear delay:
+  - [x] Off
+  - [x] 15 seconds
+  - [x] 30 seconds
+  - [x] 60 seconds
+- [x] Pick a default delay deliberately.
+- [x] Avoid wiping user clipboard content copied after the script output.
 - [ ] Verify ephemeral paste still works if automatic paste is disabled and the user pastes manually.
-- [ ] Add tests or instrumentation around skip-token behavior.
+- [x] Add tests or instrumentation around skip-token behavior.
 
 ### Phase 5: Editor UI For Script Snippets
 
@@ -195,4 +195,4 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 - [ ] Manually verify menu numbering and keyboard shortcuts.
 - [ ] Manually verify snippet editor drag/reorder still works.
 - [ ] Manually verify vault folders still hide protected snippet content until unlocked.
-- [ ] Review final diff for accidental docs, branding, release, or workflow regressions.
+- [x] Review final diff for accidental docs, branding, release, or workflow regressions.
