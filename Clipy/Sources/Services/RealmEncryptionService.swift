@@ -112,6 +112,10 @@ final class RealmEncryptionService {
                         sCopy.title = snippet.title
                         sCopy.content = snippet.content
                         sCopy.identifier = snippet.identifier
+                        sCopy.snippetType = snippet.snippetType
+                        sCopy.scriptShell = snippet.scriptShell
+                        sCopy.scriptTimeout = snippet.scriptTimeout
+                        sCopy.isEphemeral = snippet.isEphemeral
                         newRealm.add(sCopy, update: .all)
                         copy.snippets.append(sCopy)
                     }

@@ -28,13 +28,28 @@ struct PickerSnippet: Identifiable, Hashable {
     let content: String
     let folderTitle: String
     let hasVariables: Bool
+    let isScript: Bool
+    let scriptConfig: ScriptSnippetConfig
 
-    init(id: String, title: String, content: String, folderTitle: String) {
+    init(
+        id: String,
+        title: String,
+        content: String,
+        folderTitle: String,
+        type: CPYSnippet.SnippetType = .plainText,
+        scriptConfig: ScriptSnippetConfig = ScriptSnippetConfig(
+            shell: CPYSnippet.defaultScriptShell,
+            timeoutSeconds: CPYSnippet.defaultScriptTimeout,
+            isEphemeral: true
+        )
+    ) {
         self.id = id
         self.title = title
         self.content = content
         self.folderTitle = folderTitle
-        self.hasVariables = content.contains("%") && SnippetVariableProcessor.availableVariables.contains { content.contains($0.name) }
+        self.isScript = type == .script
+        self.scriptConfig = scriptConfig
+        self.hasVariables = !isScript && content.contains("%") && SnippetVariableProcessor.availableVariables.contains { content.contains($0.name) }
     }
 
     var preview: String {
@@ -44,6 +59,10 @@ struct PickerSnippet: Identifiable, Hashable {
             .prefix(2)
             .joined(separator: " \u{2022} ")
         return String(line.prefix(120))
+    }
+
+    var executionRequest: SnippetExecutionRequest {
+        SnippetExecutionRequest(content: content, type: isScript ? .script : .plainText, scriptConfig: scriptConfig)
     }
 }
 
@@ -116,7 +135,9 @@ class SnippetPickerViewModel: ObservableObject {
                         id: snippet.identifier,
                         title: snippet.title,
                         content: snippet.content,
-                        folderTitle: folder.title
+                        folderTitle: folder.title,
+                        type: snippet.type,
+                        scriptConfig: snippet.scriptConfig
                     )
                 }
             guard !snippets.isEmpty else { return nil }
@@ -254,10 +275,9 @@ class SnippetPickerViewModel: ObservableObject {
     func pasteSnippet(withID id: String) {
         for folder in allFolders {
             if let snippet = folder.snippets.first(where: { $0.id == id }) {
-                let processed = SnippetVariableProcessor.process(snippet.content)
                 UsageMetricsService.shared.track(.snippetPasted)
-                AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
-                SnippetPickerWindowController.shared.dismissAndPaste()
+                SnippetPickerWindowController.shared.dismiss()
+                SnippetExecutionService.shared.execute(snippet.executionRequest, pasteDelay: 0.1)
                 return
             }
         }
@@ -504,14 +524,14 @@ struct SnippetPickerPanelView: View {
                 .foregroundStyle(isSelected ? .white.opacity(0.7) : .secondary.opacity(0.5))
                 .frame(width: 18)
 
-            Image(systemName: snippet.hasVariables ? "function" : "doc.text.fill")
+            Image(systemName: snippet.isScript ? "terminal.fill" : snippet.hasVariables ? "function" : "doc.text.fill")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : snippet.hasVariables ? AnyShapeStyle(.orange) : AnyShapeStyle(.blue))
+                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : snippet.isScript ? AnyShapeStyle(.green) : snippet.hasVariables ? AnyShapeStyle(.orange) : AnyShapeStyle(.blue))
                 .frame(width: 22, height: 22)
                 .background(
                     isSelected
                         ? AnyShapeStyle(.white.opacity(0.15))
-                        : AnyShapeStyle(snippet.hasVariables ? SwiftUI.Color.orange.opacity(0.08) : SwiftUI.Color.blue.opacity(0.08))
+                        : AnyShapeStyle(snippet.isScript ? SwiftUI.Color.green.opacity(0.08) : snippet.hasVariables ? SwiftUI.Color.orange.opacity(0.08) : SwiftUI.Color.blue.opacity(0.08))
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
 
@@ -522,7 +542,15 @@ struct SnippetPickerPanelView: View {
                         .foregroundStyle(isSelected ? .white : .primary)
                         .lineLimit(1)
 
-                    if snippet.hasVariables {
+                    if snippet.isScript {
+                        Text("SCRIPT")
+                            .font(.system(size: 8, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? .white.opacity(0.7) : .green)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(isSelected ? .white.opacity(0.15) : SwiftUI.Color.green.opacity(0.12))
+                            .clipShape(Capsule())
+                    } else if snippet.hasVariables {
                         Text("%VAR")
                             .font(.system(size: 8, weight: .bold, design: .rounded))
                             .foregroundStyle(isSelected ? .white.opacity(0.7) : .orange)
