@@ -42,6 +42,32 @@ class SnippetsEditorViewModel: ObservableObject {
         var enabled: Bool
     }
 
+    private func sanitizedFolderTitle(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "untitled folder" : trimmed
+    }
+
+    private func sanitizedSnippetTitle(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "untitled snippet" : trimmed
+    }
+
+    private func loadedSnippet(id snippetID: String) -> (folder: FolderItem, snippet: SnippetItem)? {
+        for folder in folders {
+            if let snippet = folder.snippets.first(where: { $0.id == snippetID }) {
+                return (folder, snippet)
+            }
+        }
+        return nil
+    }
+
+    private func clearSnippetEditor() {
+        selectedSnippetID = nil
+        editingTitle = ""
+        editingContent = ""
+        hasUnsavedChanges = false
+    }
+
     func load() {
         guard let realm = Realm.safeInstance() else { return }
         let results = realm.objects(CPYFolder.self)
@@ -61,36 +87,58 @@ class SnippetsEditorViewModel: ObservableObject {
             expandedFolderIDs.insert(folder.id)
         }
 
+        if let folderID = selectedFolderID, !folders.contains(where: { $0.id == folderID }) {
+            selectedFolderID = nil
+        }
+
         if selectedFolderID == nil {
             selectedFolderID = folders.first?.id
         }
 
         if let snippetID = selectedSnippetID {
-            if let folder = folders.first(where: { $0.snippets.contains(where: { $0.id == snippetID }) }),
-               let snippet = folder.snippets.first(where: { $0.id == snippetID }) {
-                editingTitle = snippet.title
-                editingContent = snippet.content
-                hasUnsavedChanges = false
+            guard let loaded = loadedSnippet(id: snippetID) else {
+                clearSnippetEditor()
+                return
             }
+            selectedFolderID = loaded.folder.id
+            editingTitle = loaded.snippet.title
+            editingContent = loaded.snippet.content
+            hasUnsavedChanges = false
         }
     }
 
     func selectSnippet(_ snippet: SnippetItem) {
         if hasUnsavedChanges { saveCurrentSnippet() }
+        if let loaded = loadedSnippet(id: snippet.id) {
+            selectedFolderID = loaded.folder.id
+            selectedSnippetID = loaded.snippet.id
+            editingTitle = loaded.snippet.title
+            editingContent = loaded.snippet.content
+            hasUnsavedChanges = false
+            return
+        }
         selectedSnippetID = snippet.id
         editingTitle = snippet.title
         editingContent = snippet.content
         hasUnsavedChanges = false
     }
 
+    func selectFolder(_ folderID: String) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        selectedFolderID = folderID
+        clearSnippetEditor()
+    }
+
     func saveCurrentSnippet() {
         guard let snippetID = selectedSnippetID else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let snippet = realm.object(ofType: CPYSnippet.self, forPrimaryKey: snippetID) else { return }
+        let title = sanitizedSnippetTitle(editingTitle)
         realm.transaction {
-            snippet.title = editingTitle
+            snippet.title = title
             snippet.content = editingContent
         }
+        editingTitle = title
         hasUnsavedChanges = false
         load()
     }
@@ -100,15 +148,19 @@ class SnippetsEditorViewModel: ObservableObject {
         folder.merge()
         load()
         selectedFolderID = folder.identifier
+        clearSnippetEditor()
     }
 
     func removeFolder(_ folderID: String) {
         guard let realm = Realm.safeInstance() else { return }
         guard let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else { return }
+        let removesSelectedSnippet = selectedSnippetID.map { selectedSnippetID in
+            folder.snippets.contains(where: { $0.identifier == selectedSnippetID })
+        } ?? false
         folder.remove()
-        if selectedFolderID == folderID {
+        if selectedFolderID == folderID || removesSelectedSnippet {
             selectedFolderID = nil
-            selectedSnippetID = nil
+            clearSnippetEditor()
         }
         load()
     }
@@ -130,10 +182,7 @@ class SnippetsEditorViewModel: ObservableObject {
         guard let snippet = realm.object(ofType: CPYSnippet.self, forPrimaryKey: snippetID) else { return }
         snippet.remove()
         if selectedSnippetID == snippetID {
-            selectedSnippetID = nil
-            editingTitle = ""
-            editingContent = ""
-            hasUnsavedChanges = false
+            clearSnippetEditor()
         }
         load()
     }
@@ -165,7 +214,8 @@ class SnippetsEditorViewModel: ObservableObject {
     func renameFolder(_ folderID: String, to newTitle: String) {
         guard let realm = Realm.safeInstance() else { return }
         guard let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else { return }
-        realm.transaction { folder.title = newTitle }
+        let title = sanitizedFolderTitle(newTitle)
+        realm.transaction { folder.title = title }
         load()
     }
 
@@ -264,10 +314,7 @@ class SnippetsEditorViewModel: ObservableObject {
             // On a snippet — jump back to its folder
             if let folder = folders.first(where: { $0.snippets.contains(where: { $0.id == sid }) }) {
                 selectedFolderID = folder.id
-                selectedSnippetID = nil
-                editingTitle = ""
-                editingContent = ""
-                hasUnsavedChanges = false
+                clearSnippetEditor()
             }
         } else if let fid = selectedFolderID, expandedFolderIDs.contains(fid) {
             withAnimation(.easeOut(duration: 0.15)) { expandedFolderIDs.remove(fid) }
@@ -276,14 +323,8 @@ class SnippetsEditorViewModel: ObservableObject {
 
     private func selectItem(_ item: (kind: String, id: String, folderID: String?)) {
         if item.kind == "folder" {
-            if hasUnsavedChanges { saveCurrentSnippet() }
-            selectedFolderID = item.id
-            selectedSnippetID = nil
-            editingTitle = ""
-            editingContent = ""
-            hasUnsavedChanges = false
+            selectFolder(item.id)
         } else if let snippet = folders.flatMap({ $0.snippets }).first(where: { $0.id == item.id }) {
-            selectedFolderID = item.folderID
             selectSnippet(snippet)
         }
     }
@@ -397,12 +438,366 @@ class SnippetsEditorViewModel: ObservableObject {
     }
 }
 
+extension SnippetsEditorViewModel {
+    private struct SnippetLocation {
+        let folderID: String
+        let snippetID: String
+        let index: Int
+    }
+
+    func moveFolder(id folderID: String, toIndex destinationIndex: Int) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return }
+        var orderedFolders = Array(realm.objects(CPYFolder.self).sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true))
+        guard let sourceIndex = orderedFolders.firstIndex(where: { $0.identifier == folderID }) else { return }
+
+        let folder = orderedFolders.remove(at: sourceIndex)
+        let boundedIndex = min(max(destinationIndex, 0), orderedFolders.count)
+        orderedFolders.insert(folder, at: boundedIndex)
+
+        realm.transaction {
+            for (index, folder) in orderedFolders.enumerated() {
+                folder.index = index
+            }
+        }
+
+        selectedFolderID = folderID
+        clearSnippetEditor()
+        load()
+    }
+
+    func moveSnippet(id snippetID: String, toFolderID destinationFolderID: String, toIndex destinationIndex: Int) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return }
+        let folders = Array(realm.objects(CPYFolder.self))
+        guard let sourceFolder = folders.first(where: { folder in
+            folder.snippets.contains(where: { $0.identifier == snippetID })
+        }),
+        let destinationFolder = realm.object(ofType: CPYFolder.self, forPrimaryKey: destinationFolderID) else { return }
+
+        var sourceSnippets = Array(sourceFolder.snippets.sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true))
+        guard let sourceIndex = sourceSnippets.firstIndex(where: { $0.identifier == snippetID }) else { return }
+        let snippet = sourceSnippets.remove(at: sourceIndex)
+
+        if sourceFolder.identifier == destinationFolder.identifier {
+            let boundedIndex = min(max(destinationIndex, 0), sourceSnippets.count)
+            sourceSnippets.insert(snippet, at: boundedIndex)
+            realm.transaction {
+                sourceFolder.snippets.removeAll()
+                sourceFolder.snippets.append(objectsIn: sourceSnippets)
+                for (index, snippet) in sourceSnippets.enumerated() {
+                    snippet.index = index
+                }
+            }
+        } else {
+            var destinationSnippets = Array(destinationFolder.snippets.sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true))
+            let boundedIndex = min(max(destinationIndex, 0), destinationSnippets.count)
+            destinationSnippets.insert(snippet, at: boundedIndex)
+            realm.transaction {
+                sourceFolder.snippets.removeAll()
+                sourceFolder.snippets.append(objectsIn: sourceSnippets)
+                destinationFolder.snippets.removeAll()
+                destinationFolder.snippets.append(objectsIn: destinationSnippets)
+                for (index, snippet) in sourceSnippets.enumerated() {
+                    snippet.index = index
+                }
+                for (index, snippet) in destinationSnippets.enumerated() {
+                    snippet.index = index
+                }
+            }
+        }
+
+        selectedFolderID = destinationFolderID
+        selectedSnippetID = snippetID
+        editingTitle = snippet.title
+        editingContent = snippet.content
+        hasUnsavedChanges = false
+        expandedFolderIDs.insert(destinationFolderID)
+        load()
+    }
+
+    func dropIndicator(for payload: SnippetDragPayload, target: SnippetDropTarget) -> SnippetDropIndicator? {
+        switch payload {
+        case .folder(let sourceFolderID):
+            guard case let .folder(targetFolderID, targetIndex, _, _) = target,
+                  sourceFolderID != targetFolderID,
+                  let sourceIndex = folders.firstIndex(where: { $0.id == sourceFolderID }) else { return nil }
+
+            return .folder(folderID: targetFolderID, edge: sourceIndex < targetIndex ? .after : .before)
+        case .snippet(let snippetID):
+            guard let sourceLocation = snippetLocation(for: snippetID) else { return nil }
+
+            switch target {
+            case let .folder(folderID, _, _, true):
+                guard !isSameFolderEnd(sourceLocation: sourceLocation, folderID: folderID) else { return nil }
+                return .snippetEnd(folderID: folderID)
+            case let .snippet(folderID, snippetIndex):
+                guard let targetSnippet = snippet(inFolderID: folderID, at: snippetIndex),
+                      targetSnippet.snippetID != snippetID else { return nil }
+
+                let edge: SnippetDropIndicatorEdge
+                if sourceLocation.folderID == folderID {
+                    edge = sourceLocation.index < snippetIndex ? .after : .before
+                } else {
+                    edge = .before
+                }
+                return .snippet(snippetID: targetSnippet.snippetID, edge: edge)
+            case let .snippetEnd(folderID, _):
+                guard !isSameFolderEnd(sourceLocation: sourceLocation, folderID: folderID) else { return nil }
+                return .snippetEnd(folderID: folderID)
+            case .folder(_, _, _, false):
+                return nil
+            }
+        }
+    }
+
+    private func snippetLocation(for snippetID: String) -> SnippetLocation? {
+        for folder in folders {
+            if let index = folder.snippets.firstIndex(where: { $0.id == snippetID }) {
+                return SnippetLocation(folderID: folder.id, snippetID: snippetID, index: index)
+            }
+        }
+        return nil
+    }
+
+    private func snippet(inFolderID folderID: String, at index: Int) -> SnippetLocation? {
+        guard let folder = folders.first(where: { $0.id == folderID }),
+              folder.snippets.indices.contains(index) else { return nil }
+
+        return SnippetLocation(folderID: folderID, snippetID: folder.snippets[index].id, index: index)
+    }
+
+    private func isSameFolderEnd(sourceLocation: SnippetLocation, folderID: String) -> Bool {
+        guard sourceLocation.folderID == folderID,
+              let folder = folders.first(where: { $0.id == folderID }) else { return false }
+
+        return sourceLocation.index == folder.snippets.count - 1
+    }
+}
+
+enum SnippetDragPayload {
+    private static let prefix = "clipy-snippet-editor-reorder:"
+    static let contentType = UTType(exportedAs: "com.clipyapp.clipy.snippet-reorder")
+
+    case folder(String)
+    case snippet(String)
+
+    init?(rawValue: String) {
+        guard rawValue.hasPrefix(Self.prefix) else { return nil }
+
+        let payload = rawValue.dropFirst(Self.prefix.count)
+        let parts = payload.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+
+        switch parts[0] {
+        case "folder":
+            self = .folder(parts[1])
+        case "snippet":
+            self = .snippet(parts[1])
+        default:
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .folder(let identifier):
+            return "\(Self.prefix)folder:\(identifier)"
+        case .snippet(let identifier):
+            return "\(Self.prefix)snippet:\(identifier)"
+        }
+    }
+}
+
+enum SnippetDropIndicatorEdge {
+    case before
+    case after
+}
+
+enum SnippetDropIndicator: Equatable {
+    case folder(folderID: String, edge: SnippetDropIndicatorEdge)
+    case snippet(snippetID: String, edge: SnippetDropIndicatorEdge)
+    case snippetEnd(folderID: String)
+}
+
+enum SnippetDropTarget {
+    case folder(folderID: String, folderIndex: Int, snippetCount: Int, acceptsSnippets: Bool)
+    case snippet(folderID: String, snippetIndex: Int)
+    case snippetEnd(folderID: String, snippetCount: Int)
+
+    var acceptedTypes: [UTType] {
+        [SnippetDragPayload.contentType]
+    }
+}
+
+private struct SnippetDropDelegate: DropDelegate {
+    let target: SnippetDropTarget
+    let actions: SnippetDropActions
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: target.acceptedTypes)
+    }
+
+    func dropEntered(info: DropInfo) {
+        actions.entered(target)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        actions.exited(target)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let type = target.acceptedTypes.first(where: { !info.itemProviders(for: [$0]).isEmpty }),
+              let provider = info.itemProviders(for: [type]).first else {
+            actions.ended()
+            return false
+        }
+
+        provider.loadItem(forTypeIdentifier: type.identifier, options: nil) { item, _ in
+            DispatchQueue.main.async {
+                defer { actions.ended() }
+                guard let rawValue = Self.rawString(from: item),
+                      let payload = SnippetDragPayload(rawValue: rawValue) else { return }
+                actions.payload(payload, target)
+            }
+        }
+        return true
+    }
+
+    private static func rawString(from item: NSSecureCoding?) -> String? {
+        if let string = item as? String {
+            return string
+        }
+        if let string = item as? NSString {
+            return string as String
+        }
+        if let data = item as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
+    }
+}
+
+private struct SnippetDropActions {
+    let payload: (SnippetDragPayload, SnippetDropTarget) -> Void
+    let entered: (SnippetDropTarget) -> Void
+    let exited: (SnippetDropTarget) -> Void
+    let ended: () -> Void
+}
+
+private extension View {
+    @ViewBuilder
+    func snippetReorderDrag(enabled: Bool, provider: @escaping () -> NSItemProvider) -> some View {
+        if enabled {
+            self.onDrag(provider)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func snippetReorderDrop(
+        enabled: Bool,
+        target: SnippetDropTarget,
+        actions: SnippetDropActions
+    ) -> some View {
+        if enabled {
+            self.onDrop(
+                of: target.acceptedTypes,
+                delegate: SnippetDropDelegate(target: target, actions: actions)
+            )
+        } else {
+            self
+        }
+    }
+}
+
+private struct SnippetDragHandle: View {
+    let reorderEnabled: Bool
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(reorderEnabled ? AnyShapeStyle(.quaternary) : AnyShapeStyle(SwiftUI.Color.clear))
+            .frame(width: 12, height: 16)
+            .contentShape(Rectangle())
+            .help(reorderEnabled ? "Drag to reorder" : "Reordering is disabled while filtering")
+    }
+}
+
+private struct SnippetInsertionIndicatorLine: View {
+    var body: some View {
+        Capsule()
+            .fill(SwiftUI.Color.accentColor)
+            .frame(height: 2)
+            .shadow(color: SwiftUI.Color.accentColor.opacity(0.45), radius: 3, y: 1)
+            .padding(.horizontal, 8)
+            .transition(.opacity)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func snippetInsertionIndicator(_ edge: SnippetDropIndicatorEdge?, leadingPadding: CGFloat) -> some View {
+        if let edge {
+            self.overlay(alignment: edge == .before ? .top : .bottom) {
+                SnippetInsertionIndicatorLine()
+                    .padding(.leading, leadingPadding)
+            }
+        } else {
+            self
+        }
+    }
+}
+
+private struct WindowDragRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView {
+        DragView()
+    }
+
+    func updateNSView(_ nsView: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+    }
+}
+
 // MARK: - Main Editor View
 // swiftlint:disable:next type_body_length
 struct ModernSnippetsEditorView: View {
     @StateObject private var viewModel = SnippetsEditorViewModel()
+    @State private var draggedPayload: SnippetDragPayload?
+    @State private var dropIndicator: SnippetDropIndicator?
     @FocusState private var sidebarFocused: Bool
+    @FocusState private var snippetTitleFocused: Bool
     let onClose: () -> Void
+
+    private var reorderEnabled: Bool {
+        viewModel.sidebarFilter.isEmpty
+    }
+
+    private var closeButtonTrailingPadding: CGFloat {
+        #if DEBUG
+        52
+        #else
+        8
+        #endif
+    }
+
+    private var dropActions: SnippetDropActions {
+        SnippetDropActions(
+            payload: handleDrop,
+            entered: handleDropEntered,
+            exited: handleDropExited,
+            ended: clearDropPreview
+        )
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -419,6 +814,28 @@ struct ModernSnippetsEditorView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
+        .overlay(alignment: .top) {
+            WindowDragRegion()
+                .frame(height: 8)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(.white.opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Close")
+            .padding(.top, 8)
+            .padding(.trailing, closeButtonTrailingPadding)
+        }
         .overlay(DevBadgeOverlay())
         .onAppear { viewModel.load() }
         .onChange(of: viewModel.needsRefocus) { _, needs in
@@ -457,12 +874,17 @@ struct ModernSnippetsEditorView: View {
             // Folder list
             ScrollView {
                 LazyVStack(spacing: 2) {
-                    ForEach(viewModel.filteredFolders) { folder in
+                    ForEach(Array(viewModel.filteredFolders.enumerated()), id: \.element.id) { folderIndex, folder in
                         SnippetFolderRow(
                             folder: folder,
+                            folderIndex: folderIndex,
                             isSelected: viewModel.selectedFolderID == folder.id,
                             selectedSnippetID: viewModel.selectedSnippetID,
-                            onSelectFolder: { viewModel.selectedFolderID = folder.id },
+                            reorderEnabled: reorderEnabled,
+                            dropIndicator: dropIndicator,
+                            dragProvider: dragProvider,
+                            dropActions: dropActions,
+                            onSelectFolder: { viewModel.selectFolder(folder.id) },
                             onSelectSnippet: { viewModel.selectSnippet($0) },
                             onAddSnippet: { viewModel.addSnippet(to: folder.id) },
                             onDeleteFolder: { viewModel.removeFolder(folder.id) },
@@ -474,8 +896,11 @@ struct ModernSnippetsEditorView: View {
                             isExpanded: Binding(
                                 get: { viewModel.expandedFolderIDs.contains(folder.id) },
                                 set: { newValue in
-                                    if newValue { viewModel.expandedFolderIDs.insert(folder.id) }
-                                    else { viewModel.expandedFolderIDs.remove(folder.id) }
+                                    if newValue {
+                                        viewModel.expandedFolderIDs.insert(folder.id)
+                                    } else {
+                                        viewModel.expandedFolderIDs.remove(folder.id)
+                                    }
                                 }
                             )
                         )
@@ -498,6 +923,61 @@ struct ModernSnippetsEditorView: View {
         .onKeyPress(.downArrow, phases: [.down, .repeat]) { _ in viewModel.moveSelectionDown(); return .handled }
         .onKeyPress(.rightArrow, phases: .down) { _ in viewModel.expandSelected(); return .handled }
         .onKeyPress(.leftArrow, phases: .down) { _ in viewModel.collapseSelected(); return .handled }
+    }
+
+    private func dragProvider(for payload: SnippetDragPayload) -> NSItemProvider {
+        draggedPayload = payload
+        let provider = NSItemProvider()
+        provider.registerDataRepresentation(
+            forTypeIdentifier: SnippetDragPayload.contentType.identifier,
+            visibility: .ownProcess
+        ) { completion in
+            completion(payload.rawValue.data(using: .utf8), nil)
+            return nil
+        }
+        provider.suggestedName = "Clipy Snippet Reorder"
+        return provider
+    }
+
+    private func handleDropEntered(target: SnippetDropTarget) {
+        guard reorderEnabled, let draggedPayload else { return }
+        withAnimation(.easeInOut(duration: 0.1)) {
+            dropIndicator = viewModel.dropIndicator(for: draggedPayload, target: target)
+        }
+    }
+
+    private func handleDropExited(target _: SnippetDropTarget) {
+        withAnimation(.easeInOut(duration: 0.08)) {
+            dropIndicator = nil
+        }
+    }
+
+    private func clearDropPreview() {
+        withAnimation(.easeInOut(duration: 0.08)) {
+            draggedPayload = nil
+            dropIndicator = nil
+        }
+    }
+
+    private func handleDrop(payload: SnippetDragPayload, target: SnippetDropTarget) {
+        guard reorderEnabled else { return }
+
+        switch payload {
+        case .folder(let folderID):
+            guard case let .folder(_, folderIndex, _, _) = target else { return }
+            viewModel.moveFolder(id: folderID, toIndex: folderIndex)
+        case .snippet(let snippetID):
+            switch target {
+            case let .folder(folderID, _, snippetCount, true):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetCount)
+            case let .snippet(folderID, snippetIndex):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetIndex)
+            case let .snippetEnd(folderID, snippetCount):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetCount)
+            case .folder(_, _, _, false):
+                return
+            }
+        }
     }
 
     private var sidebarFooter: some View {
@@ -569,6 +1049,22 @@ struct ModernSnippetsEditorView: View {
             TextField("Snippet title", text: $viewModel.editingTitle)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .medium))
+                .focused($snippetTitleFocused)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(
+                    snippetTitleFocused
+                        ? AnyShapeStyle(.white.opacity(0.08))
+                        : AnyShapeStyle(SwiftUI.Color.clear)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(
+                            snippetTitleFocused ? SwiftUI.Color.accentColor.opacity(0.65) : .white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                )
                 .onChange(of: viewModel.editingTitle) { _, _ in
                     viewModel.hasUnsavedChanges = true
                 }
@@ -722,10 +1218,15 @@ struct ModernSnippetsEditorView: View {
 }
 
 // MARK: - Folder Row
-struct SnippetFolderRow: View {
+private struct SnippetFolderRow: View {
     let folder: SnippetsEditorViewModel.FolderItem
+    let folderIndex: Int
     let isSelected: Bool
     let selectedSnippetID: String?
+    let reorderEnabled: Bool
+    let dropIndicator: SnippetDropIndicator?
+    let dragProvider: (SnippetDragPayload) -> NSItemProvider
+    let dropActions: SnippetDropActions
     let onSelectFolder: () -> Void
     let onSelectSnippet: (SnippetsEditorViewModel.SnippetItem) -> Void
     let onAddSnippet: () -> Void
@@ -741,11 +1242,14 @@ struct SnippetFolderRow: View {
     @State private var editedTitle = ""
     @State private var isHovered = false
     @State private var isVaultUnlocked = false
+    @FocusState private var titleFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 1) {
             // Folder header
             HStack(spacing: 6) {
+                SnippetDragHandle(reorderEnabled: reorderEnabled)
+
                 Button {
                     if folder.isVault && !isVaultUnlocked && !isExpanded {
                         VaultAuthService.shared.authenticate(folderID: folder.id, reason: "Unlock \"\(folder.title)\" vault") { success in
@@ -783,12 +1287,31 @@ struct SnippetFolderRow: View {
                     .foregroundStyle(folder.isVault ? (isVaultUnlocked ? SwiftUI.Color.green : SwiftUI.Color.orange) : folder.enabled ? SwiftUI.Color.accentColor : .secondary)
 
                 if isEditing {
-                    TextField("", text: $editedTitle, onCommit: {
-                        onRenameFolder(editedTitle)
-                        isEditing = false
-                    })
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
+                    TextField("", text: $editedTitle, onCommit: commitRename)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .medium))
+                        .focused($titleFieldFocused)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.white.opacity(0.09))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .strokeBorder(
+                                    titleFieldFocused ? SwiftUI.Color.accentColor.opacity(0.75) : .white.opacity(0.12),
+                                    lineWidth: 1
+                                )
+                        )
+                        .onAppear {
+                            DispatchQueue.main.async {
+                                titleFieldFocused = true
+                            }
+                        }
+                        .onChange(of: titleFieldFocused) { _, focused in
+                            if !focused && isEditing {
+                                commitRename()
+                            }
+                        }
                 } else {
                     Text(folder.title)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
@@ -832,10 +1355,24 @@ struct SnippetFolderRow: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .contentShape(Rectangle())
+            .snippetInsertionIndicator(folderHeaderIndicatorEdge, leadingPadding: 0)
             .onTapGesture { onSelectFolder() }
             .onHover { hovering in
                 withAnimation(.easeInOut(duration: 0.12)) { isHovered = hovering }
             }
+            .snippetReorderDrag(enabled: reorderEnabled) {
+                dragProvider(.folder(folder.id))
+            }
+            .snippetReorderDrop(
+                enabled: reorderEnabled,
+                target: .folder(
+                    folderID: folder.id,
+                    folderIndex: folderIndex,
+                    snippetCount: folder.snippets.count,
+                    acceptsSnippets: !folder.isVault || isVaultUnlocked
+                ),
+                actions: dropActions
+            )
             .contextMenu {
                 Button("Add Snippet") { onAddSnippet() }
                 Button(folder.enabled ? "Disable" : "Enable") { onToggleFolder() }
@@ -858,24 +1395,76 @@ struct SnippetFolderRow: View {
 
             // Snippet rows (vault folders require auth to see snippets)
             if isExpanded && (!folder.isVault || isVaultUnlocked) {
-                ForEach(folder.snippets) { snippet in
+                ForEach(Array(folder.snippets.enumerated()), id: \.element.id) { snippetIndex, snippet in
                     SnippetItemRow(
                         snippet: snippet,
+                        folderID: folder.id,
+                        snippetIndex: snippetIndex,
                         isSelected: selectedSnippetID == snippet.id,
+                        reorderEnabled: reorderEnabled,
+                        dropIndicator: dropIndicator,
+                        dragProvider: dragProvider,
+                        dropActions: dropActions,
                         onSelect: { onSelectSnippet(snippet) },
                         onDelete: { onDeleteSnippet(snippet) },
                         onToggle: { onToggleSnippet(snippet) }
                     )
                 }
+
+                ZStack {
+                    if showsSnippetEndIndicatorInExpandedFolder {
+                        SnippetInsertionIndicatorLine()
+                            .padding(.leading, 26)
+                    }
+                }
+                .frame(height: 6)
+                .snippetReorderDrop(
+                    enabled: reorderEnabled,
+                    target: .snippetEnd(folderID: folder.id, snippetCount: folder.snippets.count),
+                    actions: dropActions
+                )
             }
         }
+    }
+
+    private func commitRename() {
+        onRenameFolder(editedTitle)
+        isEditing = false
+    }
+
+    private var folderHeaderIndicatorEdge: SnippetDropIndicatorEdge? {
+        if case let .folder(folderID, edge) = dropIndicator, folderID == folder.id {
+            return edge
+        }
+        if case let .snippetEnd(folderID) = dropIndicator,
+           folderID == folder.id,
+           !showsSnippetEndIndicatorInExpandedFolder {
+            return .after
+        }
+        return nil
+    }
+
+    private var showsSnippetEndIndicatorInExpandedFolder: Bool {
+        if case let .snippetEnd(folderID) = dropIndicator,
+           folderID == folder.id,
+           isExpanded,
+           !folder.isVault || isVaultUnlocked {
+            return true
+        }
+        return false
     }
 }
 
 // MARK: - Snippet Item Row
-struct SnippetItemRow: View {
+private struct SnippetItemRow: View {
     let snippet: SnippetsEditorViewModel.SnippetItem
+    let folderID: String
+    let snippetIndex: Int
     let isSelected: Bool
+    let reorderEnabled: Bool
+    let dropIndicator: SnippetDropIndicator?
+    let dragProvider: (SnippetDragPayload) -> NSItemProvider
+    let dropActions: SnippetDropActions
     let onSelect: () -> Void
     let onDelete: () -> Void
     let onToggle: () -> Void
@@ -884,7 +1473,9 @@ struct SnippetItemRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Spacer().frame(width: 14)
+            Spacer().frame(width: 8)
+
+            SnippetDragHandle(reorderEnabled: reorderEnabled)
 
             Image(systemName: snippet.enabled ? "doc.text.fill" : "doc.text")
                 .font(.system(size: 10, weight: .medium))
@@ -934,15 +1525,31 @@ struct SnippetItemRow: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .contentShape(Rectangle())
+        .snippetInsertionIndicator(snippetIndicatorEdge, leadingPadding: 26)
         .onTapGesture { onSelect() }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) { isHovered = hovering }
         }
+        .snippetReorderDrag(enabled: reorderEnabled) {
+            dragProvider(.snippet(snippet.id))
+        }
+        .snippetReorderDrop(
+            enabled: reorderEnabled,
+            target: .snippet(folderID: folderID, snippetIndex: snippetIndex),
+            actions: dropActions
+        )
         .contextMenu {
             Button(snippet.enabled ? "Disable" : "Enable") { onToggle() }
             Divider()
             Button("Delete", role: .destructive) { onDelete() }
         }
+    }
+
+    private var snippetIndicatorEdge: SnippetDropIndicatorEdge? {
+        if case let .snippet(snippetID, edge) = dropIndicator, snippetID == snippet.id {
+            return edge
+        }
+        return nil
     }
 }
 
@@ -989,7 +1596,7 @@ class ModernSnippetsWindowController: NSWindowController {
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = true

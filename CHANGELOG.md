@@ -7,8 +7,20 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.0] - 2026-05-13
+
+### Added
+- Added a visible close button to the modern snippets editor window
+- Added drag reordering for snippet folders and snippets, including moving snippets between folders
+- Added insertion-line previews that show where dragged folders or snippets will land
+
+### Changed
+- Improved inline rename fields so edit mode and cursor focus are visible
+
 ### Fixed
 - Surfaced manual GitHub release update-check failures in Preferences instead of failing silently
+- Kept snippets editor selection state in sync when selecting snippets across folders or deleting folders
+- Restricted snippet reorder drop targets to Clipy's own drag payloads so unrelated text drags are ignored
 
 ## [26.4.5] - 2026-04-17
 
