@@ -168,6 +168,11 @@ class SnippetSpec: QuickSpec {
 
         describeEphemeralPasteBehavior()
 
+        describeScriptExecutionService()
+
+    }
+
+    private class func describeScriptExecutionService() {
         describe("Script execution service") {
 
             it("captures stdout exactly up to the output cap") {
@@ -260,7 +265,6 @@ class SnippetSpec: QuickSpec {
                 }
             }
         }
-
     }
 
     private class func describeEphemeralPasteBehavior() {
