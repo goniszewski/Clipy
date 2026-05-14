@@ -31,7 +31,6 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 ### Fixed
 - Fixed history menu overflow layout so inline and submenu placement honors menu size preferences
 - Fixed list numbering so the 10th visible item displays as `10.` while keeping the `0` shortcut
-
 ## [26.5.0] - 2026-05-13
 
 ### Added
