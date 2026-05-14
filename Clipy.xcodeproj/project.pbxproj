@@ -23,6 +23,7 @@
 		CB06A101FB260001006677AA /* ScriptExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A100FB260001006677AA /* ScriptExecutionService.swift */; };
 		CB06A103FB260001006677AA /* SnippetExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A102FB260001006677AA /* SnippetExecutionService.swift */; };
 		CB06A105FB260002006677AA /* SnippetXMLCoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A104FB260002006677AA /* SnippetXMLCoder.swift */; };
+		CB06A109FB260004006677AA /* SnippetTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A108FB260004006677AA /* SnippetTemplates.swift */; };
 		EDE7A42E04B3D58A61FD0FD2 /* ModernSnippetsEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802DE837E59DA8EA94C6B53A /* ModernSnippetsEditor.swift */; };
 		FA08EDF81D1FED7D000D1D13 /* HotKeyServiceSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA08EDF71D1FED7D000D1D13 /* HotKeyServiceSpec.swift */; };
 		FA0D5CE81DDCC61600AC9052 /* ClipService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0D5CE71DDCC61600AC9052 /* ClipService.swift */; };
@@ -180,6 +181,7 @@
 		CB06A100FB260001006677AA /* ScriptExecutionService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ScriptExecutionService.swift; sourceTree = "<group>"; };
 		CB06A102FB260001006677AA /* SnippetExecutionService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetExecutionService.swift; sourceTree = "<group>"; };
 		CB06A104FB260002006677AA /* SnippetXMLCoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetXMLCoder.swift; sourceTree = "<group>"; };
+		CB06A108FB260004006677AA /* SnippetTemplates.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetTemplates.swift; sourceTree = "<group>"; };
 		FA08EDF71D1FED7D000D1D13 /* HotKeyServiceSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HotKeyServiceSpec.swift; sourceTree = "<group>"; };
 		FA0D5CE71DDCC61600AC9052 /* ClipService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ClipService.swift; sourceTree = "<group>"; };
 		FA10897B20EC22E200A3FEFC /* AssetsImages.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AssetsImages.swift; sourceTree = "<group>"; };
@@ -555,6 +557,7 @@
 				FA1DB50D1DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.swift */,
 				802DE837E59DA8EA94C6B53A /* ModernSnippetsEditor.swift */,
 				CB06A104FB260002006677AA /* SnippetXMLCoder.swift */,
+				CB06A108FB260004006677AA /* SnippetTemplates.swift */,
 				FA1DB50F1DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.xib */,
 			);
 			path = Snippets;
@@ -959,6 +962,7 @@
 				CB06A101FB260001006677AA /* ScriptExecutionService.swift in Sources */,
 				CB06A103FB260001006677AA /* SnippetExecutionService.swift in Sources */,
 				CB06A105FB260002006677AA /* SnippetXMLCoder.swift in Sources */,
+				CB06A109FB260004006677AA /* SnippetTemplates.swift in Sources */,
 				FA1DB4D71DDCB479007F95C8 /* CPYSnippet.swift in Sources */,
 				FA1DB5201DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.swift in Sources */,
 				EDE7A42E04B3D58A61FD0FD2 /* ModernSnippetsEditor.swift in Sources */,

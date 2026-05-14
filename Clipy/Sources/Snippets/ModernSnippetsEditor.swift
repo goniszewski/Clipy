@@ -33,6 +33,7 @@ class SnippetsEditorViewModel: ObservableObject {
     @Published var hasUnsavedChanges = false
     @Published var expandedFolderIDs = Set<String>()
     @Published var needsRefocus = false
+    @Published var showingTemplateGallery = false
 
     struct FolderItem: Identifiable, Hashable {
         let id: String
@@ -59,6 +60,7 @@ class SnippetsEditorViewModel: ObservableObject {
 
     private let scriptTestRunner: ScriptTestRunner
     private var activeScriptTestRunID: UUID?
+    static let defaultTemplateFolderTitle = "Script Snippets"
 
     init(scriptTestRunner: @escaping ScriptTestRunner = { request, completion in
         SnippetExecutionService.shared.testRun(request) { result in
@@ -263,6 +265,54 @@ class SnippetsEditorViewModel: ObservableObject {
            let newSnippet = folderItem.snippets.last {
             selectSnippet(newSnippet)
         }
+    }
+
+    func installTemplate(_ template: SnippetTemplate) -> String? {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return nil }
+        guard let folder = templateInstallFolder(in: realm) else { return nil }
+
+        let snippet = folder.createSnippet()
+        snippet.title = template.name
+        snippet.content = template.content
+        snippet.type = .script
+        snippet.scriptShell = template.shell
+        snippet.scriptTimeout = template.timeoutSeconds
+        snippet.isEphemeral = template.isEphemeral
+        let installedID = snippet.identifier
+
+        folder.mergeSnippet(snippet)
+        selectedFolderID = folder.identifier
+        expandedFolderIDs.insert(folder.identifier)
+        load()
+
+        if let installed = loadedSnippet(id: installedID) {
+            selectedFolderID = installed.folder.id
+            loadEditingState(from: installed.snippet)
+        }
+
+        showingTemplateGallery = false
+        return installedID
+    }
+
+    private func templateInstallFolder(in realm: Realm) -> CPYFolder? {
+        if let selectedFolderID,
+           let selectedFolder = realm.object(ofType: CPYFolder.self, forPrimaryKey: selectedFolderID),
+           !selectedFolder.isVault {
+            return selectedFolder
+        }
+
+        if let existingFolder = realm.objects(CPYFolder.self)
+            .filter("title == %@ AND isVault == false", Self.defaultTemplateFolderTitle)
+            .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
+            .first {
+            return existingFolder
+        }
+
+        let folder = CPYFolder.create()
+        folder.title = Self.defaultTemplateFolderTitle
+        realm.transaction { realm.add(folder, update: .all) }
+        return realm.object(ofType: CPYFolder.self, forPrimaryKey: folder.identifier)
     }
 
     func removeSnippet(_ snippetID: String) {
@@ -1103,6 +1153,13 @@ struct ModernSnippetsEditorView: View {
                 }
             }
 
+            SnippetToolbarButton(icon: "terminal.fill", help: "Add Script Template") {
+                viewModel.showingTemplateGallery = true
+            }
+            .popover(isPresented: $viewModel.showingTemplateGallery, arrowEdge: .bottom) {
+                SnippetTemplateGalleryView(viewModel: viewModel)
+            }
+
             Spacer()
 
             Text("\(viewModel.totalSnippetCount) snippets")
@@ -1472,6 +1529,104 @@ struct ModernSnippetsEditorView: View {
 
     private func snippetKBHint(_ key: String, _ label: String) -> some View {
         KeyboardHintView(key: key, label: label)
+    }
+}
+
+// MARK: - Template Gallery
+private struct SnippetTemplateGalleryView: View {
+    @ObservedObject var viewModel: SnippetsEditorViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "terminal.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.green)
+                Text("Script Templates")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Button {
+                    viewModel.showingTemplateGallery = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .background(.white.opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Close")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider().opacity(0.35)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(SnippetTemplateLibrary.categories, id: \.self) { category in
+                        templateSection(category)
+                    }
+                }
+                .padding(12)
+            }
+        }
+        .frame(width: 420, height: 420)
+        .background(.regularMaterial)
+    }
+
+    private func templateSection(_ category: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(category.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+
+            ForEach(SnippetTemplateLibrary.templates(in: category)) { template in
+                templateRow(template)
+            }
+        }
+    }
+
+    private func templateRow(_ template: SnippetTemplate) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: template.systemImageName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.green)
+                .frame(width: 28, height: 28)
+                .background(SwiftUI.Color.green.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(template.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.primary)
+                Text(template.summary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 6)
+
+            Button {
+                _ = viewModel.installTemplate(template)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.green)
+                    .frame(width: 24, height: 24)
+                    .background(SwiftUI.Color.green.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .help("Add")
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(.white.opacity(0.035))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }
 

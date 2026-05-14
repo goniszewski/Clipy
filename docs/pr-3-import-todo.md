@@ -110,24 +110,24 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 
 ### Phase 6: Template Gallery
 
-- [ ] Import the template gallery concept only after script snippets are stable.
-- [ ] Keep generic templates that are broadly useful:
-  - [ ] JSON pretty print.
-  - [ ] JSON minify.
-  - [ ] Base64 encode.
-  - [ ] Base64 decode.
-  - [ ] URL encode.
-  - [ ] JWT payload decode.
-  - [ ] Epoch to date.
-  - [ ] Markdown to HTML, if dependencies are acceptable.
-  - [ ] UUID generation.
-  - [ ] Password generation, after reviewing pipeline behavior.
-- [ ] Do not interpolate user parameter values directly into shell scripts.
-- [ ] Prefer passing parameter values as environment variables.
-- [ ] If interpolation is unavoidable, escape shell-sensitive characters rigorously.
-- [ ] Select newly installed snippets by identifier, not by `last`.
-- [ ] Make template install behavior predictable for vault folders.
-- [ ] Decide whether templates should be built in or optional examples.
+- [x] Import the template gallery concept only after script snippets are stable.
+- [x] Keep generic templates that are broadly useful:
+  - [x] JSON pretty print.
+  - [x] JSON minify.
+  - [x] Base64 encode.
+  - [x] Base64 decode.
+  - [x] URL encode.
+  - [x] JWT payload decode.
+  - [x] Epoch to date.
+  - [x] Markdown to HTML omitted for now because there is no acceptable bundled Markdown dependency.
+  - [x] UUID generation.
+  - [x] Password generation, after reviewing pipeline behavior.
+- [x] Do not interpolate user parameter values directly into shell scripts.
+- [x] Prefer passing parameter values as environment variables.
+- [x] If interpolation is unavoidable, escape shell-sensitive characters rigorously.
+- [x] Select newly installed snippets by identifier, not by `last`.
+- [x] Make template install behavior predictable for vault folders.
+- [x] Decide whether templates should be built in or optional examples.
 
 ### Phase 7: Plugin System Redesign
 
