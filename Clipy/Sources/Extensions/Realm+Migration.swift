@@ -15,7 +15,7 @@ private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "Migrati
 
 extension Realm {
     static func migration() {
-        let config = Realm.Configuration(schemaVersion: 10, migrationBlock: { migration, oldSchemaVersion in
+        let config = Realm.Configuration(schemaVersion: 11, migrationBlock: { migration, oldSchemaVersion in
             if oldSchemaVersion <= 2 {
                 migration.enumerateObjects(ofType: CPYSnippet.className()) { _, newObject in
                     newObject?["identifier"] = NSUUID().uuidString
@@ -69,6 +69,15 @@ extension Realm {
                 // Schema 10: Added ocrText field to CPYClip
                 migration.enumerateObjects(ofType: CPYClip.className()) { _, newObject in
                     newObject?["ocrText"] = nil
+                }
+            }
+            if oldSchemaVersion <= 10 {
+                // Schema 11: Added script snippet metadata to CPYSnippet.
+                migration.enumerateObjects(ofType: CPYSnippet.className()) { _, newObject in
+                    newObject?["snippetType"] = CPYSnippet.SnippetType.plainText.rawValue
+                    newObject?["scriptShell"] = CPYSnippet.defaultScriptShell
+                    newObject?["scriptTimeout"] = CPYSnippet.defaultScriptTimeout
+                    newObject?["isEphemeral"] = true
                 }
             }
         })

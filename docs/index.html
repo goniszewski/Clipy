@@ -1033,7 +1033,7 @@ footer{
       <a href="#features">Features</a>
       <a href="#use-cases">Use Cases</a>
       <a href="#how-it-works">How It Works</a>
-      <a href="#templates">Templates</a>
+      <a href="#snippets">Snippets</a>
       <a href="#install">Install</a>
       <a href="https://github.com/goniszewski/Clipy/releases/latest" class="nav-cta">Download</a>
     </div>
@@ -1047,15 +1047,19 @@ footer{
     <div class="hero-text reveal">
       <div class="hero-badge glass">
         <span class="pulse"></span>
-        26.4 Release Cycle &mdash; Active Development
+        26.4.5 &mdash; Current Tagged Release
       </div>
       <h1>Your clipboard,<br><span class="gradient-amber">evolved.</span></h1>
       <p class="hero-sub">A modern reimplementation of the original Clipy clipboard manager for macOS, maintained by Robert Goniszewski.</p>
-      <p style="font-size:.82rem;color:var(--text-muted);margin-top:-4px;margin-bottom:12px;line-height:1.5">Shipping fast in the open. The core experience is solid, but expect UI refinements, new features landing frequently, and the occasional rough edge as we build toward the next release cycle.</p>
+      <p style="font-size:.82rem;color:var(--text-muted);margin-top:-4px;margin-bottom:12px;line-height:1.5">Current releases may be unsigned and unnotarized until Developer ID signing is configured. If macOS blocks Clipy, use Control-click &rarr; Open once, then grant Accessibility the first time you paste from Clipy.</p>
       <div class="hero-buttons">
         <a href="https://github.com/goniszewski/Clipy/releases/latest" class="btn btn-amber">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download for macOS
+        </a>
+        <a href="./clipy-demo.mp4" class="btn btn-glass">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Watch Demo
         </a>
         <a href="https://github.com/goniszewski/Clipy" class="btn btn-glass">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -1067,7 +1071,7 @@ footer{
     <div class="hero-cards" id="heroCards">
       <div class="float-card fc-code" data-depth="0.04">
         <div class="float-card-label">Code</div>
-        <div class="fc-body">aws sso login --profile prod</div>
+        <div class="fc-body">git commit -m "fix updater"</div>
       </div>
       <div class="float-card fc-color" data-depth="0.02">
         <div class="float-card-label">Color</div>
@@ -1075,15 +1079,15 @@ footer{
       </div>
       <div class="float-card fc-json" data-depth="0.06">
         <div class="float-card-label">JSON</div>
-        <div class="fc-body">{<span class="key">"api_key"</span>: <span class="str">"sk-..."</span>}</div>
+        <div class="fc-body">{<span class="key">"version"</span>: <span class="str">"26.4.5"</span>}</div>
       </div>
       <div class="float-card fc-url" data-depth="0.03">
         <div class="float-card-label">URL</div>
-        <div class="fc-body">https://github.com/clipy</div>
+        <div class="fc-body">https://github.com/goniszewski/Clipy</div>
       </div>
       <div class="float-card fc-terminal" data-depth="0.08">
         <div class="float-card-label">Terminal</div>
-        <div class="fc-body"><span class="cmd">$ echo "Hello"</span><br><span class="out">Hello</span></div>
+        <div class="fc-body"><span class="cmd">$ xcodebuild test</span><br><span class="out">BUILD SUCCEEDED</span></div>
       </div>
     </div>
   </div>
@@ -1098,17 +1102,17 @@ footer{
     </div>
     <div class="bento-grid">
 
-      <!-- Script Snippets (2 cols) -->
+      <!-- Smart Actions (2 cols) -->
       <div class="bento-cell b-script glass reveal">
         <div class="bento-icon" style="background:rgba(245,158,11,.1);color:var(--amber)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
         </div>
-        <h3>Script Snippets</h3>
-        <p>Execute shell scripts and paste the output. Fetch secrets, transform formats, generate UUIDs.</p>
+        <h3>Smart Actions</h3>
+        <p>Format JSON, minify it, clean tracking parameters from URLs, and transform text case directly from the preview pane.</p>
         <div class="bento-visual">
           <div class="mini-terminal">
-            <span class="prompt">$</span> <span class="cmd-text">aws secretsmanager get-secret-value</span><br>
-            <span class="output">→ xK9#mP2$vL5nQ8...</span><span class="cursor"></span>
+            <span class="prompt">URL</span> <span class="cmd-text">?utm_source=reddit&amp;gclid=123</span><br>
+            <span class="output">→ Clean URL · Format JSON · Title Case</span><span class="cursor"></span>
           </div>
         </div>
       </div>
@@ -1127,38 +1131,38 @@ footer{
               <span class="search-text" id="searchText"></span><span class="search-cursor"></span>
             </div>
             <div class="mini-search-results" id="searchResults">
-              <div class="mini-search-result match" data-match="aws cred">
+              <div class="mini-search-result match" data-match="release">
                 <span class="search-result-icon" style="background:var(--green)"></span>
-                aws sts get-caller-identity
+                release-notes.md
               </div>
-              <div class="mini-search-result match" data-match="aws cred">
+              <div class="mini-search-result match" data-match="release">
                 <span class="search-result-icon" style="background:var(--amber)"></span>
-                aws-credentials-prod.json
+                https://github.com/goniszewski/Clipy/releases/latest
               </div>
               <div class="mini-search-result" data-match="no">
                 <span class="search-result-icon" style="background:var(--blue)"></span>
-                https://github.com/clipy
+                Screenshot 2026-04-17.png
               </div>
-              <div class="mini-search-result match" data-match="aws">
+              <div class="mini-search-result match" data-match="release">
                 <span class="search-result-icon" style="background:var(--red)"></span>
-                AWS_SECRET_ACCESS_KEY=AK...
+                {"version":"26.4.5","channel":"release"}
               </div>
               <div class="mini-search-result" data-match="no">
                 <span class="search-result-icon" style="background:var(--text-muted)"></span>
-                SELECT * FROM users LIMIT 10
+                Cmd+Shift+V opens history
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Ephemeral Paste -->
+      <!-- Bulk Delete -->
       <div class="bento-cell b-ephemeral glass reveal" id="ephemeralCell">
         <div class="bento-icon" style="background:rgba(239,68,68,.1);color:var(--red)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
         </div>
-        <h3>Ephemeral Paste</h3>
-        <p>Script output never touches your clipboard history. Auto-clears after 30 seconds.</p>
+        <h3>Bulk Delete</h3>
+        <p>Select multiple clips with Shift + Up/Down, then remove them together with Cmd + Backspace when your history needs a cleanup pass.</p>
         <div class="bento-visual">
           <div class="ephemeral-demo" id="ephemeralDemo"></div>
         </div>
@@ -1272,22 +1276,22 @@ footer{
         </div>
       </div>
 
-      <!-- Plugins -->
+      <!-- Excluded Apps -->
       <div class="bento-cell b-plugins glass reveal">
         <div class="bento-icon" style="background:rgba(168,85,247,.1);color:#a855f7">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6m0 0L9 5m3 3l3-3"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="8.5" y="8" width="7" height="7" rx="1"/></svg>
         </div>
-        <h3>Plugins</h3>
-        <p>Drop scripts into <code style="font-family:var(--font-mono);font-size:.82em;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:3px">~/.clipy/plugins/</code> &mdash; auto-trigger or manual.</p>
+        <h3>Excluded Apps</h3>
+        <p>Keep password managers, banking apps, and any other sensitive software out of clipboard history by excluding them in Preferences.</p>
       </div>
 
-      <!-- Templates -->
-      <div class="bento-cell b-templates glass reveal" id="templates">
+      <!-- Snippet Editor -->
+      <div class="bento-cell b-templates glass reveal">
         <div class="bento-icon" style="background:rgba(245,158,11,.1);color:var(--amber)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
         </div>
-        <h3>14 Templates</h3>
-        <p>AWS, JSON, JWT, Base64, and more. Configure with a form, not raw scripts.</p>
+        <h3>Snippet Editor</h3>
+        <p>Organize folders, rename inline, assign per-folder shortcuts, and import or export snippet libraries as XML.</p>
       </div>
 
       <!-- Keyboard-first -->
@@ -1305,7 +1309,7 @@ footer{
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.22-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
         </div>
         <h3>Auto-update</h3>
-        <p>One-click updates from GitHub Releases with Sparkle appcasts and signed update archives.</p>
+        <p>Developer ID-signed releases can update in-app with Sparkle. Manual or unsigned installs fall back to checking GitHub Releases from Preferences.</p>
       </div>
 
     </div>
@@ -1318,139 +1322,135 @@ footer{
   <div class="container">
     <div class="use-cases-heading reveal">
       <h2>Real workflows,<br>not feature lists.</h2>
-      <p>How developers actually use Clipy every day.</p>
+      <p>Common workflows that match the current app, not a future roadmap.</p>
     </div>
 
     <div class="use-case-tabs reveal" id="useCaseTabs">
-      <div class="use-case-tab active" data-uc="aws">AWS Secrets</div>
-      <div class="use-case-tab" data-uc="format">Format Transforms</div>
-      <div class="use-case-tab" data-uc="devops">DevOps Workflow</div>
-      <div class="use-case-tab" data-uc="design">Design &amp; Frontend</div>
-      <div class="use-case-tab" data-uc="writing">Writing &amp; Docs</div>
+      <div class="use-case-tab active" data-uc="search">Search &amp; Paste</div>
+      <div class="use-case-tab" data-uc="snippets">Snippets &amp; Vaults</div>
+      <div class="use-case-tab" data-uc="collect">Collect Mode</div>
+      <div class="use-case-tab" data-uc="ocr">OCR &amp; Images</div>
+      <div class="use-case-tab" data-uc="privacy">Privacy &amp; Updates</div>
     </div>
 
-    <!-- AWS Secrets -->
-    <div class="use-case-cards active" id="uc-aws">
+    <!-- Search & Paste -->
+    <div class="use-case-cards active" id="uc-search">
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Secret Management</div>
-          <h3>Fetch AWS secrets without storing them</h3>
-          <p>You have credentials in AWS Secrets Manager — database passwords, API keys, tokens. Today you open a terminal, run a long <code>aws secretsmanager</code> command, copy the output, paste it. Every few hours when SSO expires.</p>
-          <p>With Clipy: <strong>one hotkey, Touch ID, done.</strong> The secret is pasted and auto-cleared. It never touches your clipboard history or disk.</p>
-          <div class="uc-tip"><strong>Tip:</strong> Place AWS snippets in a Vault folder. You'll need Touch ID to access them, and they're hidden from search and export when locked.</div>
+          <div class="uc-subtitle">Clipboard History</div>
+          <h3>Find the exact thing you copied five minutes ago</h3>
+          <p>You copied a SQL query, a release URL, and a command. The menu is already busy. With Clipy: <strong>hit Cmd + Shift + V, type a few letters, preview the result, and press Return to paste.</strong></p>
+          <p>The search panel stays keyboard-first: filters, quick select numbers, plain-text paste, multi-select, pinning, OCR, and share actions are all available without leaving the panel.</p>
+          <div class="uc-tip"><strong>Tip:</strong> Press <code>&#8984;D</code> to pin frequently used clips so they stay at the top of history.</div>
         </div>
         <div>
-          <h4 style="font-size:.9rem;margin-bottom:16px;color:var(--text-dim)">Setup (one time)</h4>
+          <h4 style="font-size:.9rem;margin-bottom:16px;color:var(--text-dim)">Typical flow</h4>
           <ol class="use-case-steps">
-            <li>Open snippet editor &rarr; create an <strong>"AWS"</strong> folder, mark as Vault</li>
-            <li>Click <strong>Templates</strong> &rarr; pick <strong>"AWS Secret Fetch"</strong></li>
-            <li>Fill in the form: <code>Profile: production</code>, <code>Secret: prod/db/password</code></li>
-            <li>Click <strong>Create Snippet</strong> &mdash; done. Repeat for each secret.</li>
-          </ol>
-          <h4 style="font-size:.9rem;margin:24px 0 16px;color:var(--text-dim)">Daily use</h4>
-          <ol class="use-case-steps">
-            <li>Hit <code>&#8984;&#8679;B</code> to open the snippet picker</li>
-            <li>Touch ID to unlock the AWS vault</li>
-            <li>Select "Prod DB Password" &mdash; script runs, SSO auto-refreshes if needed</li>
-            <li>Secret is pasted into your app. <span class="uc-badge uc-badge-green">Ephemeral</span> Never saved to history.</li>
-            <li>30 seconds later, pasteboard auto-clears. <span class="uc-badge uc-badge-red">Auto-clear</span></li>
+            <li>Copy text, code, a URL, an image, or a file path</li>
+            <li>Open history with <code>&#8984;&#8679;V</code></li>
+            <li>Type to filter, or use the number keys for quick select</li>
+            <li>Press <code>Return</code> to paste, or <code>Shift + Return</code> for plain text</li>
+            <li>Use <code>Shift + Up/Down</code> to multi-select and <code>&#8984;&#9003;</code> to delete in bulk</li>
           </ol>
         </div>
       </div>
 
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Available Templates</div>
-          <h3>Four AWS templates, ready to configure</h3>
-          <p>Each template shows a form with labeled fields &mdash; no raw script editing. Fill in your profile name and resource, see a live preview, create the snippet.</p>
+          <div class="uc-subtitle">Smart Actions</div>
+          <h3>Clean URLs, format JSON, and transform text inline</h3>
+          <p>The preview pane adapts to the selected clip. JSON gets format and minify actions, URLs can be cleaned, text clips offer case transforms, and detected content becomes clickable.</p>
         </div>
         <div class="uc-terminal">
-          <div style="margin-bottom:12px"><span class="uc-cmd">AWS SSO Credentials</span> <span class="uc-dim">&mdash; pastes export statements</span></div>
-          <div style="margin-bottom:12px"><span class="uc-cmd">AWS Secret Fetch</span> <span class="uc-dim">&mdash; raw secret value from Secrets Manager</span></div>
-          <div style="margin-bottom:12px"><span class="uc-cmd">AWS Secret Field</span> <span class="uc-dim">&mdash; extracts a JSON key (e.g., "password")</span></div>
-          <div><span class="uc-cmd">AWS SSM Parameter</span> <span class="uc-dim">&mdash; Parameter Store value with decryption</span></div>
+          <div class="uc-comment"># Selected URL clip</div>
+          <div class="uc-cmd">https://example.com/?utm_source=reddit&amp;gclid=123</div>
+          <div class="uc-result">Clean URL &rarr; https://example.com/</div>
+          <div style="margin-top:16px" class="uc-comment"># Selected JSON clip</div>
+          <div class="uc-cmd">{"name":"prod","ssl":true}</div>
+          <div class="uc-result">Format &middot; Minify</div>
+          <div style="margin-top:16px" class="uc-comment"># Detected content</div>
+          <div><span class="uc-dim">Badges:</span> <span class="uc-badge uc-badge-blue">URL</span> <span class="uc-badge uc-badge-green">email</span> <span class="uc-badge uc-badge-amber">phone</span></div>
         </div>
       </div>
     </div>
 
-    <!-- Format Transforms -->
-    <div class="use-case-cards" id="uc-format">
+    <!-- Snippets & Vaults -->
+    <div class="use-case-cards" id="uc-snippets">
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Format Conversion</div>
-          <h3>Copy messy, paste clean</h3>
-          <p>You're debugging and copy a minified JSON response from the browser. You need to paste it formatted into Slack, a doc, or a PR description.</p>
-          <p>With Clipy: <strong>copy the JSON, trigger the "JSON Pretty Print" snippet, paste formatted output.</strong> The original stays in history, the formatted version is ephemeral (no duplicates).</p>
-          <div class="uc-tip"><strong>Tip:</strong> The transform templates work on whatever is currently on your clipboard. Copy first, then trigger the snippet.</div>
-        </div>
-        <div>
-          <div class="uc-terminal">
-            <div class="uc-comment"># You copied this:</div>
-            <div style="margin-bottom:12px">{"name":"prod","host":"db.internal","port":5432,"ssl":true}</div>
-            <div class="uc-comment"># Trigger "JSON Pretty Print" snippet, paste this:</div>
-            <div>{</div>
-            <div>&nbsp;&nbsp;<span class="uc-key">"name"</span>: <span class="uc-val">"prod"</span>,</div>
-            <div>&nbsp;&nbsp;<span class="uc-key">"host"</span>: <span class="uc-val">"db.internal"</span>,</div>
-            <div>&nbsp;&nbsp;<span class="uc-key">"port"</span>: <span class="uc-val">5432</span>,</div>
-            <div>&nbsp;&nbsp;<span class="uc-key">"ssl"</span>: <span class="uc-val">true</span></div>
-            <div>}</div>
-          </div>
-          <h4 style="font-size:.9rem;margin:24px 0 12px;color:var(--text-dim)">More transforms</h4>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <span class="uc-badge uc-badge-blue">Base64 Encode</span>
-            <span class="uc-badge uc-badge-blue">Base64 Decode</span>
-            <span class="uc-badge uc-badge-blue">URL Encode</span>
-            <span class="uc-badge uc-badge-amber">JWT Decode</span>
-            <span class="uc-badge uc-badge-amber">Epoch &rarr; Date</span>
-            <span class="uc-badge uc-badge-green">JSON Minify</span>
-            <span class="uc-badge uc-badge-green">Markdown &rarr; HTML</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- DevOps Workflow -->
-    <div class="use-case-cards" id="uc-devops">
-      <div class="use-case-card reveal">
-        <div class="use-case-narrative">
-          <div class="uc-subtitle">DevOps &amp; Infrastructure</div>
-          <h3>Collect mode for multi-source configs</h3>
-          <p>You're building a .env file and need values from three different places &mdash; a Slack message, a config file, and a dashboard. Normally you'd copy-paste-switch-copy-paste-switch endlessly.</p>
-          <p>With Clipy: <strong>start Collect Mode, copy all three values, then paste them all at once</strong> &mdash; merged in order.</p>
+          <div class="uc-subtitle">Reusable Snippets</div>
+          <h3>Keep replies, commands, and templates one shortcut away</h3>
+          <p>Use the snippet picker for repetitive text you paste every day: issue templates, support replies, deploy notes, or standard code-review comments.</p>
+          <p>The modern editor supports folders, inline rename, import/export as XML, and per-folder shortcuts for the snippet sets you reach for constantly.</p>
+          <div class="uc-tip"><strong>Tip:</strong> Use the two-digit quick select in the snippet picker. Type <code>1</code> then <code>4</code> to paste snippet #14 without arrowing through the list.</div>
         </div>
         <div>
           <ol class="use-case-steps">
-            <li>Start Collect Mode from the menu bar (or hotkey)</li>
-            <li>Copy <code>DATABASE_URL=postgres://...</code> from Slack</li>
-            <li>Copy <code>REDIS_HOST=cache.internal</code> from the config dashboard</li>
-            <li>Copy <code>API_KEY=sk-live-...</code> from the secrets vault</li>
-            <li>Click <strong>Paste Collected</strong> &mdash; all three pasted together, in order</li>
+            <li>Press <code>&#8984;&#8679;B</code> to open the snippet picker</li>
+            <li>Search by name, or jump straight to a folder with its shortcut</li>
+            <li>Paste the selected snippet anywhere with <code>Return</code></li>
+            <li>Open the editor when you need to add folders, reorganize, import, or export</li>
           </ol>
-          <div class="uc-tip"><strong>Tip:</strong> Collect mode shows a floating indicator so you always know when it's active. The count updates in real time.</div>
         </div>
       </div>
 
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Quick References</div>
-          <h3>Pin the commands you paste daily</h3>
-          <p>That SSH command, the kubectl context switch, the Docker compose path &mdash; you paste them ten times a day but they keep getting pushed down your history.</p>
-          <p><strong>Pin them.</strong> Pinned clips stay at the top of your history forever, survive re-copies and history limits.</p>
+          <div class="uc-subtitle">Vaults &amp; Variables</div>
+          <h3>Protect sensitive folders and personalize the output</h3>
+          <p>Vault folders stay locked until you authenticate with Touch ID or a password, and locked vault content stays out of search and the snippet picker until it is unlocked.</p>
+          <p>Variables such as <code>%DATE%</code>, <code>%TIME%</code>, <code>%CLIPBOARD%</code>, and <code>%UUID%</code> expand when you paste, so one snippet can adapt to the moment.</p>
         </div>
         <div class="uc-terminal">
-          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">ssh deploy@prod.internal -i ~/.ssh/prod.pem</span></div>
-          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">kubectl config use-context production</span></div>
-          <div><span style="color:var(--amber)">&#9733;</span> <span class="uc-cmd">docker compose -f infra/docker-compose.yml up -d</span></div>
-          <div style="margin-top:8px;color:var(--text-muted);font-size:.75rem">&#8984;D to pin/unpin from the search panel</div>
+          <div class="uc-comment">// Snippet content</div>
+          <div>Bug found on <span class="uc-cmd">%DATE%</span> at <span class="uc-cmd">%TIME%</span></div>
+          <div>Steps to reproduce: <span class="uc-cmd">%CLIPBOARD%</span></div>
+          <div>ID: <span class="uc-cmd">%UUID%</span></div>
+          <div style="margin-top:16px" class="uc-comment">// Folder setting</div>
+          <div><span class="uc-cmd">Set as Vault (Touch ID)</span></div>
         </div>
       </div>
     </div>
 
-    <!-- Design & Frontend -->
-    <div class="use-case-cards" id="uc-design">
+    <!-- Collect Mode -->
+    <div class="use-case-cards" id="uc-collect">
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Design Workflow</div>
+          <div class="uc-subtitle">Queue Workflow</div>
+          <h3>Collect clips from multiple places, then paste them together</h3>
+          <p>You're building a config block and need values from Slack, a dashboard, and a terminal. Normally that means copy, switch apps, paste, repeat. With Clipy: <strong>start Collect Mode, gather the pieces, then paste the queue in one shot.</strong></p>
+        </div>
+        <div>
+          <ol class="use-case-steps">
+            <li>Start Collect Mode from the menu bar or the Queue filter in the search panel</li>
+            <li>Copy the pieces you need from different apps</li>
+            <li>Preview the queue, reorder items if needed, and choose a separator</li>
+            <li>Paste everything merged together, or paste sequentially one item at a time</li>
+          </ol>
+          <div class="uc-tip"><strong>Tip:</strong> Collect Mode shows a floating indicator with the queue count so you always know when it is active.</div>
+        </div>
+      </div>
+
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Queue Controls</div>
+          <h3>Choose how the collected items come back out</h3>
+          <p>The queue preview is editable: remove items, change separators, paste merged, or step through the queue sequentially when the target app needs one field at a time.</p>
+        </div>
+        <div class="uc-terminal">
+          <div><span class="uc-dim">Separator:</span> <span class="uc-badge uc-badge-blue">newline</span> <span class="uc-badge uc-badge-amber">comma</span> <span class="uc-badge uc-badge-green">tab</span> <span class="uc-badge uc-badge-red">space</span></div>
+          <div style="margin-top:16px"><span class="uc-dim">Actions:</span> <span class="uc-cmd">Paste All</span> &middot; <span class="uc-cmd">Paste Next</span> &middot; <span class="uc-cmd">Clear Queue</span></div>
+          <div style="margin-top:16px" class="uc-comment"># Example merged preview</div>
+          <div class="uc-result">DATABASE_URL=...&#10;REDIS_HOST=...&#10;API_KEY=...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCR & Images -->
+    <div class="use-case-cards" id="uc-ocr">
+      <div class="use-case-card reveal">
+        <div class="use-case-narrative">
+          <div class="uc-subtitle">Images &amp; OCR</div>
           <h3>Colors, images, and OCR from screenshots</h3>
           <p>You copy a hex color from Figma &mdash; Clipy detects it and shows a live swatch in your history. You screenshot an error dialog &mdash; Clipy runs OCR and the text becomes searchable.</p>
           <p><strong>Everything you copy is findable.</strong> Text, images, colors, URLs, files &mdash; all searchable from one panel.</p>
@@ -1468,58 +1468,49 @@ footer{
 
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Snippet Variables</div>
-          <h3>Dynamic templates for repetitive text</h3>
-          <p>Bug report templates, meeting notes, code comments with timestamps &mdash; create snippets with <code>%DATE%</code>, <code>%TIME%</code>, <code>%CLIPBOARD%</code> and they're filled in automatically on paste.</p>
+          <div class="uc-subtitle">Rich Content</div>
+          <h3>Preview files, links, and images without losing fidelity</h3>
+          <p>Clipy keeps thumbnails for images and file clips, underlines URLs, shows color swatches, and lets you share image clips through the native macOS share sheet.</p>
         </div>
         <div class="uc-terminal">
-          <div class="uc-comment">// Snippet content:</div>
-          <div>Bug found on <span class="uc-cmd">%DATE%</span> at <span class="uc-cmd">%TIME%</span></div>
-          <div>Steps to reproduce: <span class="uc-cmd">%CLIPBOARD%</span></div>
-          <div>ID: <span class="uc-cmd">%UUID%</span></div>
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <div class="uc-comment">// Pasted result:</div>
-          <div>Bug found on <span class="uc-val">2026-03-25</span> at <span class="uc-val">14:32:07</span></div>
-          <div>Steps to reproduce: <span class="uc-val">Click submit with empty form</span></div>
-          <div>ID: <span class="uc-val">a1b2c3d4-e5f6-...</span></div>
-          </div>
+          <div class="uc-comment"># Examples in history</div>
+          <div><span class="uc-dim">&#x1F517;</span> <span class="uc-cmd">https://goniszewski.github.io/Clipy/</span></div>
+          <div><span class="uc-dim">&#x1F5BC;</span> Screenshot 2026-04-17.png</div>
+          <div><span class="uc-dim">&#x1F4C4;</span> release-notes.pdf</div>
+          <div><span class="uc-dim">&#x1F7E7;</span> <span class="uc-cmd">#f59e0b</span></div>
+          <div style="margin-top:16px" class="uc-result">Cmd + S on image clips opens the macOS share sheet.</div>
         </div>
       </div>
     </div>
 
-    <!-- Writing & Docs -->
-    <div class="use-case-cards" id="uc-writing">
+    <!-- Privacy & Updates -->
+    <div class="use-case-cards" id="uc-privacy">
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Writing &amp; Documentation</div>
-          <h3>Rich text snippets for repeated content</h3>
-          <p>Email signatures, standard responses, code review templates, PR descriptions &mdash; create them as snippets and paste them anywhere with a hotkey.</p>
-          <p>Clipy preserves <strong>rich text formatting</strong> (RTF). What you paste looks exactly how you created it &mdash; bold, links, lists, all intact.</p>
+          <div class="uc-subtitle">Excluded Apps</div>
+          <h3>Automatically skip sensitive apps</h3>
+          <p>Password managers, banking apps, private browsing workflows, or any custom app you choose can be excluded so their clipboard contents are never stored in history.</p>
         </div>
-        <div>
-          <ol class="use-case-steps">
-            <li>Create a snippet folder "Responses" with your standard replies</li>
-            <li>Hit <code>&#8984;&#8679;B</code> &rarr; search "review" &rarr; paste your code review template</li>
-            <li>Variables like <code>%DATE%</code> and <code>%CLIPBOARD%</code> are auto-filled</li>
-            <li>Rich text, plain text, or script output &mdash; the right format for each snippet</li>
-          </ol>
-          <div class="uc-tip"><strong>Tip:</strong> Use the two-digit quick select in the snippet picker. Type <code>1</code> then <code>4</code> to instantly paste snippet #14. No arrow keys needed.</div>
+        <div class="uc-terminal">
+          <div class="uc-comment"># Excluded apps</div>
+          <div><span class="uc-dim">&#x2717;</span> 1Password.app</div>
+          <div><span class="uc-dim">&#x2717;</span> Bitwarden.app</div>
+          <div><span class="uc-dim">&#x2717;</span> Banking apps</div>
+          <div><span class="uc-dim">&#x2717;</span> Anything you add in Preferences</div>
         </div>
       </div>
 
       <div class="use-case-card reveal">
         <div class="use-case-narrative">
-          <div class="uc-subtitle">Excluded Apps</div>
-          <h3>Automatically skip sensitive apps</h3>
-          <p>Password managers, banking apps, private browsing &mdash; configure apps that Clipy should never capture from. Copies from excluded apps are silently ignored.</p>
+          <div class="uc-subtitle">Updates</div>
+          <h3>Signed releases update in-app. Manual builds fall back cleanly.</h3>
+          <p>When a release is Developer ID signed and published with an appcast, Sparkle can update it in-place. When it is not, Preferences falls back to checking GitHub Releases so manual-install builds still have a clear update path.</p>
         </div>
         <div class="uc-terminal">
-          <div class="uc-comment"># Excluded apps (configured in Preferences):</div>
-          <div><span class="uc-dim">&#x2717;</span> 1Password.app</div>
-          <div><span class="uc-dim">&#x2717;</span> Bitwarden.app</div>
-          <div><span class="uc-dim">&#x2717;</span> Safari Private Browsing</div>
-          <div><span class="uc-dim">&#x2717;</span> Banking apps</div>
-          <div style="margin-top:12px;color:var(--text-muted);font-size:.75rem">Copies from these apps are never stored in Clipy history.</div>
+          <div class="uc-comment"># Preferences &rarr; Updates</div>
+          <div><span class="uc-dim">Signed build:</span> <span class="uc-cmd">Check for Updates</span></div>
+          <div><span class="uc-dim">Manual build:</span> <span class="uc-cmd">Check GitHub Releases</span></div>
+          <div style="margin-top:12px" class="uc-result">If macOS blocks launch, use Control-click &rarr; Open once.</div>
         </div>
       </div>
     </div>
@@ -1531,7 +1522,7 @@ footer{
   <div class="container">
     <div class="how-heading reveal">
       <h2>How it works</h2>
-      <p>Three steps. Zero configuration.</p>
+      <p>Three steps. One permission prompt the first time you paste.</p>
     </div>
     <div class="how-steps reveal" id="howSteps">
       <div class="how-step">
@@ -1551,8 +1542,8 @@ footer{
           <span class="how-step-num">2</span>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
         </div>
-        <h3>Clipy captures</h3>
-        <p>Everything stored in your menu bar, searchable and organized.</p>
+        <h3>Open history or snippets</h3>
+        <p>Search, preview, filter, and organize everything from one keyboard-first panel.</p>
       </div>
       <div class="how-connector" id="connector2">
         <svg viewBox="0 0 80 24"><line class="line" x1="0" y1="12" x2="68" y2="12"/><polygon class="arrow" points="68,6 80,12 68,18"/></svg>
@@ -1563,14 +1554,14 @@ footer{
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/><rect x="2" y="2" width="20" height="20" rx="5"/></svg>
         </div>
         <h3>Paste anywhere</h3>
-        <p>History, snippets, scripts — always one shortcut away.</p>
+        <p>Grant Accessibility on first use, then paste history items or snippets anywhere.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══ SCRIPT SNIPPETS SHOWCASE ═══ -->
-<section class="showcase" id="templates">
+<!-- ═══ SNIPPETS SHOWCASE ═══ -->
+<section class="showcase" id="snippets">
   <div class="container showcase-inner">
     <div class="reveal">
       <div class="terminal-window">
@@ -1580,55 +1571,51 @@ footer{
           <span class="terminal-dot g"></span>
         </div>
         <div class="terminal-code">
-          <span class="comment">#!/bin/bash</span><br>
-          <span class="var">PROFILE</span>=<span class="str">"production"</span><br>
-          <span class="var">SECRET</span>=<span class="str">"prod/db/password"</span><br><br>
-          <span class="cmd">aws secretsmanager get-secret-value</span> <span class="flag">\</span><br>
-          &nbsp;&nbsp;<span class="flag">--profile</span> <span class="str">"$PROFILE"</span> <span class="flag">\</span><br>
-          &nbsp;&nbsp;<span class="flag">--secret-id</span> <span class="str">"$SECRET"</span> <span class="flag">\</span><br>
-          &nbsp;&nbsp;<span class="flag">--query</span> <span class="str">'SecretString'</span> <span class="flag">\</span><br>
-          &nbsp;&nbsp;<span class="flag">--output</span> <span class="str">text</span>
+          <span class="comment"># Snippet content</span><br>
+          Release notes updated on <span class="var">%DATE%</span><br>
+          Link: <span class="var">%CLIPBOARD%</span><br>
+          ID: <span class="var">%UUID%</span>
         </div>
       </div>
       <div class="terminal-output">
         <div class="terminal-arrow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
         </div>
-        <div class="terminal-result">xK9#mP2$vL5nQ8wR1... pasted to cursor</div>
+        <div class="terminal-result">Release notes updated on 2026-04-20</div>
       </div>
     </div>
     <div class="showcase-text reveal">
-      <h2>Fetch secrets<br>on demand</h2>
-      <p class="accent-sub">Nothing stored. Nothing leaked.</p>
-      <p>Script snippets execute shell commands and paste the output. Ephemeral by default &mdash; the result never enters your clipboard history. Auto-clears from the pasteboard in 30 seconds.</p>
+      <h2>Snippets that<br>expand on paste</h2>
+      <p class="accent-sub">Reusable text, personalized at the moment you paste.</p>
+      <p>Clipy's snippet system covers the everyday work: reusable text, rich text formatting, folder organization, variable expansion, Touch ID-protected vaults, and import/export for sharing snippet libraries.</p>
       <div class="template-scroll">
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-          AWS SSO
+          %DATE%
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          AWS Secret
+          %TIME%
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          JSON Pretty
+          %CLIPBOARD%
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          JWT Decode
+          %UUID%
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-          Base64
+          Vault
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/></svg>
-          UUID
+          XML Import
         </div>
         <div class="template-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Password
+          Folder Hotkeys
         </div>
       </div>
     </div>
@@ -1638,22 +1625,22 @@ footer{
 <!-- ═══ SECURITY ═══ -->
 <section class="security" id="security">
   <div class="container">
-    <h2 class="reveal">Your secrets stay <span class="gradient-amber">secret</span></h2>
+    <h2 class="reveal">Privacy controls and <span class="gradient-amber">transparent releases</span></h2>
     <div class="security-grid">
       <div class="security-card reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-        <h3>Ephemeral by default</h3>
-        <p>Script output bypasses clipboard history entirely.</p>
+        <h3>Vault folders</h3>
+        <p>Protect sensitive snippet folders with Touch ID or a password and keep them out of search until unlocked.</p>
       </div>
       <div class="security-card reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <h3>Auto-clear</h3>
-        <p>Pasteboard wiped after 30 seconds. Configurable.</p>
+        <h3>Excluded apps</h3>
+        <p>Ignore clipboard changes from password managers, banking tools, or any app you do not want Clipy to monitor.</p>
       </div>
       <div class="security-card reveal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-        <h3>Unsigned beta-friendly</h3>
-        <p>Works today for testers, with Gatekeeper bypass steps documented until Developer ID signing is in place.</p>
+        <h3>Manual-release warning</h3>
+        <p>Current public releases may require a Gatekeeper bypass on first launch until Developer ID signing and notarization are in place.</p>
       </div>
     </div>
   </div>
@@ -1663,8 +1650,8 @@ footer{
 <section class="install" id="install">
   <div class="container">
     <div class="install-heading reveal">
-      <h2>Get started in seconds</h2>
-      <p>No Homebrew. No Terminal. Just drag and drop.</p>
+      <h2>Get started in a minute</h2>
+      <p>Download the DMG, drag it to Applications, and approve macOS once if the build is unsigned.</p>
     </div>
     <div class="install-steps reveal">
       <div class="install-step">
@@ -1685,11 +1672,11 @@ footer{
         <div class="install-step-dot">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h3>Launch from menu bar</h3>
-        <p>Clipy appears in your menu bar. Ready to go.</p>
+        <h3>Launch and grant paste access</h3>
+        <p>Clipy appears in your menu bar. The first time you paste from history or snippets, grant Accessibility so Clipy can paste into other apps.</p>
       </div>
     </div>
-    <p class="install-note reveal">If Gatekeeper blocks an unsigned build, use Finder → Control-click → Open, or allow it once from System Settings → Privacy &amp; Security.</p>
+    <p class="install-note reveal"><strong>Current GitHub releases may be unsigned and unnotarized.</strong> If Gatekeeper blocks launch, use Finder &rarr; Control-click &rarr; Open, or allow it once from System Settings &rarr; Privacy &amp; Security. Signed releases can use Sparkle for in-app updates; manual installs fall back to <strong>Check GitHub Releases</strong> in Preferences.</p>
   </div>
 </section>
 
@@ -1701,29 +1688,29 @@ footer{
     </div>
     <div class="changelog reveal">
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Script Snippets
+        <span class="tag tag-green">Added</span> GitHub Releases fallback for manual or unsigned installs
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Ephemeral Paste
+        <span class="tag tag-green">Added</span> Calendar-based versioning for the new release train
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Plugin System
+        <span class="tag tag-red">Release</span> Sparkle 2 appcast workflow for signed releases
       </div>
       <div class="changelog-item">
-        <span class="tag tag-green">Added</span> Template Gallery with Config Forms
+        <span class="tag tag-red">Fixed</span> Automatic paste when event-posting permission is available
       </div>
       <div class="changelog-item">
-        <span class="tag tag-red">Release</span> Sparkle appcast and GitHub-hosted updates
+        <span class="tag tag-red">Fixed</span> Sparkle disabled cleanly for unsigned or debug builds
       </div>
       <div class="changelog-item">
-        <span class="tag tag-red">Security</span> Auto-clear Pasteboard
+        <span class="tag tag-red">Changed</span> Faster history menu keyboard navigation, including parent-range navigation
       </div>
     </div>
     <div class="changelog">
       <details>
         <summary>26.3 highlights</summary>
         <div class="detail-content">
-          Clipboard history with instant search &middot; Vault Folders with Touch ID &middot; Keyboard-first navigation with two-digit quick select &middot; Auto-update from GitHub Releases &middot; Complete rewrite of the paste engine for speed and reliability.
+          Spotlight-style clipboard history &middot; OCR and syntax highlighting &middot; Snippet picker and editor &middot; Vault folders and Collect Mode &middot; Smart actions, image sharing, and developer tools.
         </div>
       </details>
     </div>
@@ -1854,7 +1841,7 @@ footer{
   function runSearchAnim(){
     if(searchAnimated) return;
     searchAnimated = true;
-    const query = 'aws cred';
+    const query = 'release';
     let i = 0;
     const typeInterval = setInterval(()=>{
       if(i < query.length){
@@ -1897,7 +1884,7 @@ footer{
   function runEphemeralAnim(){
     if(ephemeralAnimated) return;
     ephemeralAnimated = true;
-    const secret = 'AKIAIOSFODNN7EXAMPLE';
+    const secret = 'draft.md  old-link  screenshot.png';
     ephemeralDemo.innerHTML = '';
     // Build spans
     secret.split('').forEach(ch=>{

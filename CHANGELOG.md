@@ -7,6 +7,30 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.2] - 2026-05-14
+
+### Fixed
+- Fixed manual release packaging so non-Developer ID builds are still locally code-signed with the `com.clipy-app.Clipy` bundle identity, allowing macOS Accessibility permission to attach to the app instead of an ad hoc executable signature.
+
+## [26.5.1] - 2026-05-14
+
+### Added
+- Added script snippets with configurable shell, timeout, and ephemeral output settings
+- Added script snippet execution from the classic menu, modern snippet picker, and snippets editor test-run flow
+- Added script snippet test controls that show stdout, stderr, exit code, timeout state, and launch errors
+- Added an ephemeral paste auto-clear preference with Off, 15 second, 30 second, and 60 second options
+- Added a script template gallery with JSON formatting, Base64, URL encoding, JWT payload decoding, epoch conversion, UUID generation, and password generation examples
+- Added XML import/export support for script snippet fields
+- Added script snippet indicators in menus and the modern snippet picker
+
+### Changed
+- Routed text and script snippet pasting through a shared snippet execution service
+- Hardened script execution with bounded timeouts, output limits, non-zero exit handling, pipe draining, and a minimal documented environment
+- Kept ephemeral script output out of clipboard history while avoiding auto-clear of newer clipboard contents
+
+### Fixed
+- Fixed history menu overflow layout so inline and submenu placement honors menu size preferences
+- Fixed list numbering so the 10th visible item displays as `10.` while keeping the `0` shortcut
 ## [26.5.0] - 2026-05-13
 
 ### Added

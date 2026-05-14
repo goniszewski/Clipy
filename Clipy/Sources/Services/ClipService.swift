@@ -18,14 +18,17 @@ import os.log
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "ClipService")
 
 final class ClipService {
+    private static let maxSkippedChangeCounts = 16
 
     // MARK: - Properties
     private var cachedChangeCount: Int = 0
     private var latestClipUpdateTime: Int?
     private var storeTypes = [String: NSNumber]()
     private let lock = NSRecursiveLock(name: "com.clipy-app.Clipy.ClipUpdatable")
+    private let skipLock = NSLock()
     private var monitorTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
+    private var skippedChangeCounts = Set<Int>()
 
     // MARK: - Thumbnail Cache
     private static let thumbnailCache = NSCache<NSString, NSImage>()
@@ -124,6 +127,21 @@ final class ClipService {
         cachedChangeCount += 1
     }
 
+    func skipCapture(forChangeCount changeCount: Int) {
+        skipLock.lock()
+        pruneSkippedChangeCounts(currentChangeCount: changeCount)
+        skippedChangeCounts.insert(changeCount)
+        pruneSkippedChangeCountsToLimit()
+        skipLock.unlock()
+    }
+
+    func shouldSkipCapture(forChangeCount changeCount: Int) -> Bool {
+        skipLock.lock()
+        defer { skipLock.unlock() }
+        pruneSkippedChangeCounts(currentChangeCount: changeCount)
+        return skippedChangeCounts.remove(changeCount) != nil
+    }
+
     func markPasted(_ clip: CPYClip) {
         guard AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting) else { return }
         guard let realm = Realm.safeInstance() else { return }
@@ -136,12 +154,30 @@ final class ClipService {
             managedClip.updateTime = nextUpdateTime
         }
     }
+
+    private func pruneSkippedChangeCounts(currentChangeCount: Int) {
+        skippedChangeCounts = skippedChangeCounts.filter { $0 >= currentChangeCount }
+    }
+
+    private func pruneSkippedChangeCountsToLimit() {
+        let overflow = skippedChangeCounts.count - Self.maxSkippedChangeCounts
+        guard overflow > 0 else { return }
+        skippedChangeCounts
+            .sorted()
+            .prefix(overflow)
+            .forEach { skippedChangeCounts.remove($0) }
+    }
 }
 
 // MARK: - Create Clip
 extension ClipService {
     fileprivate func create() {
         lock.lock(); defer { lock.unlock() }
+
+        if shouldSkipCapture(forChangeCount: NSPasteboard.general.changeCount) {
+            logger.debug("Skipping clipboard capture for a registered pasteboard change")
+            return
+        }
 
         // Store types
         if !storeTypes.values.contains(NSNumber(value: true)) { return }

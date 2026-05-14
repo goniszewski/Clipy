@@ -49,7 +49,7 @@ Open an issue with:
 
 ### Suggesting Features
 
-Check the [wishlist](wishlist.md) first — your idea might already be tracked. If not, open an issue describing:
+Check existing [issues](https://github.com/goniszewski/Clipy/issues) and [discussions](https://github.com/goniszewski/Clipy/discussions) first — your idea might already be tracked. If not, open an issue describing:
 - The problem you're trying to solve
 - Your proposed solution
 - Any alternatives you've considered

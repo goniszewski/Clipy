@@ -25,7 +25,7 @@ struct FiltersTip: Tip {
 
 struct PinClipTip: Tip {
     var title: Text { Text("Pin Important Clips") }
-    var message: Text? { Text("Press \u{2318}P to pin a clip so it stays at the top of your history.") }
+    var message: Text? { Text("Press \u{2318}D to pin a clip so it stays at the top of your history.") }
     var image: Image? { Image(systemName: "pin") }
 }
 

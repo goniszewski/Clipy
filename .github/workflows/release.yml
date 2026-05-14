@@ -38,6 +38,24 @@ jobs:
             echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify changelog entry
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          HEADING_PREFIX="## [$VERSION] - "
+
+          if ! awk -v prefix="$HEADING_PREFIX" '
+            index($0, prefix) == 1 {
+              date = substr($0, length(prefix) + 1)
+              if (date ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) {
+                found = 1
+              }
+            }
+            END { exit found ? 0 : 1 }
+          ' CHANGELOG.md; then
+            echo "::error title=Missing changelog entry::CHANGELOG.md must include a dated '## [$VERSION] - YYYY-MM-DD' section before releasing."
+            exit 1
+          fi
+
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -77,7 +95,7 @@ jobs:
             echo "apple_signing_enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "apple_signing_enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Unsigned release::Missing Apple signing secrets: ${missing[*]}. Building unsigned, unnotarized artifacts that require the documented Gatekeeper bypass."
+            echo "::warning title=Manual signed release::Missing Apple signing secrets: ${missing[*]}. Building locally signed, unnotarized artifacts that require the documented Gatekeeper bypass."
           fi
 
           if [ "${#missing[@]}" -eq 0 ] && [ -n "$SPARKLE_PRIVATE_KEY" ]; then
@@ -104,6 +122,45 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERTIFICATE_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t agg \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+      - name: Create fallback signing certificate
+        if: steps.release_mode.outputs.apple_signing_enabled == 'false'
+        run: |
+          LOCAL_SIGN_ID="Clipy Manual Release Local Signing"
+          CERTIFICATE_PATH="${{ runner.temp }}/local-signing.p12"
+          PRIVATE_KEY_PATH="${{ runner.temp }}/local-signing.key"
+          CERTIFICATE_PEM_PATH="${{ runner.temp }}/local-signing.crt"
+          CERTIFICATE_PASSWORD="$(openssl rand -hex 16)"
+
+          KEYCHAIN_PATH="${{ runner.temp }}/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          openssl req -new -newkey rsa:2048 -x509 -days 3650 -nodes \
+            -subj "/CN=$LOCAL_SIGN_ID/" \
+            -addext "keyUsage=critical,digitalSignature" \
+            -addext "extendedKeyUsage=critical,codeSigning" \
+            -keyout "$PRIVATE_KEY_PATH" \
+            -out "$CERTIFICATE_PEM_PATH"
+
+          openssl pkcs12 -export \
+            -inkey "$PRIVATE_KEY_PATH" \
+            -in "$CERTIFICATE_PEM_PATH" \
+            -name "$LOCAL_SIGN_ID" \
+            -out "$CERTIFICATE_PATH" \
+            -passout pass:"$CERTIFICATE_PASSWORD"
 
           security import "$CERTIFICATE_PATH" \
             -P "$CERTIFICATE_PASSWORD" \
@@ -195,8 +252,16 @@ jobs:
             --entitlements "${{ runner.temp }}/release.entitlements" \
             --sign "$SIGN_ID" "$APP_PATH"
 
-      - name: Verify signature
-        if: steps.release_mode.outputs.apple_signing_enabled == 'true'
+      - name: Re-sign exported app
+        if: steps.release_mode.outputs.apple_signing_enabled == 'false'
+        run: |
+          APP_PATH="${{ runner.temp }}/export/Clipy.app"
+          LOCAL_SIGN_ID="Clipy Manual Release Local Signing"
+
+          codesign --force --deep \
+            --sign "$LOCAL_SIGN_ID" "$APP_PATH"
+
+      - name: Verify exported app signature
         run: |
           codesign --verify --deep --strict --verbose=2 "${{ runner.temp }}/export/Clipy.app"
 
@@ -300,7 +365,7 @@ jobs:
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
@@ -313,7 +378,7 @@ jobs:
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
@@ -321,13 +386,13 @@ jobs:
           3. If macOS blocks the app on first launch, open \`Applications\`, Control-click \`Clipy.app\`, then choose \`Open\`
           4. If needed, go to \`System Settings\` -> \`Privacy & Security\` and click \`Open Anyway\`
 
-          **Unsigned, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are disabled until Developer ID signing and notarization are configured.
+          **Locally signed, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are disabled until Developer ID signing and notarization are configured.
           EOF
           else
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
@@ -335,7 +400,7 @@ jobs:
           3. If macOS blocks the app on first launch, open \`Applications\`, Control-click \`Clipy.app\`, then choose \`Open\`
           4. If needed, go to \`System Settings\` -> \`Privacy & Security\` and click \`Open Anyway\`
 
-          **Unsigned, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are unavailable until \`SPARKLE_PRIVATE_KEY\` is configured and appcast publishing is re-enabled.
+          **Locally signed, unnotarized manual release.** This build uses the documented Gatekeeper bypass flow on first launch. Automatic updates are unavailable until Developer ID signing, notarization, and appcast publishing are re-enabled.
           EOF
           fi
 

@@ -9,7 +9,6 @@
 
 import SwiftUI
 import RealmSwift
-import AEXML
 import UniformTypeIdentifiers
 import LocalAuthentication
 import TipKit
@@ -17,15 +16,24 @@ import TipKit
 // MARK: - Snippets ViewModel
 @MainActor
 class SnippetsEditorViewModel: ObservableObject {
+    typealias ScriptTestRunner = @MainActor (SnippetExecutionRequest, @escaping @MainActor (ScriptExecutionResult) -> Void) -> Void
+
     @Published var folders = [FolderItem]()
     @Published var selectedFolderID: String?
     @Published var selectedSnippetID: String?
     @Published var editingTitle = ""
     @Published var editingContent = ""
+    @Published var editingSnippetType = CPYSnippet.SnippetType.plainText
+    @Published var editingScriptShell = CPYSnippet.defaultScriptShell
+    @Published var editingScriptTimeout = CPYSnippet.defaultScriptTimeout
+    @Published var editingIsEphemeral = true
+    @Published var isRunningScriptTest = false
+    @Published var scriptTestResult: ScriptExecutionResult?
     @Published var sidebarFilter = ""
     @Published var hasUnsavedChanges = false
     @Published var expandedFolderIDs = Set<String>()
     @Published var needsRefocus = false
+    @Published var showingTemplateGallery = false
 
     struct FolderItem: Identifiable, Hashable {
         let id: String
@@ -40,6 +48,75 @@ class SnippetsEditorViewModel: ObservableObject {
         var title: String
         var content: String
         var enabled: Bool
+        var type: CPYSnippet.SnippetType
+        var scriptShell: String
+        var scriptTimeout: Int
+        var isEphemeral: Bool
+
+        var isScript: Bool {
+            type == .script
+        }
+    }
+
+    private let scriptTestRunner: ScriptTestRunner
+    private var activeScriptTestRunID: UUID?
+    static let defaultTemplateFolderTitle = "Script Snippets"
+
+    init(scriptTestRunner: @escaping ScriptTestRunner = { request, completion in
+        SnippetExecutionService.shared.testRun(request) { result in
+            Task { @MainActor in
+                completion(result)
+            }
+        }
+    }) {
+        self.scriptTestRunner = scriptTestRunner
+    }
+
+    private func sanitizedFolderTitle(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "untitled folder" : trimmed
+    }
+
+    private func sanitizedSnippetTitle(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "untitled snippet" : trimmed
+    }
+
+    private func loadedSnippet(id snippetID: String) -> (folder: FolderItem, snippet: SnippetItem)? {
+        for folder in folders {
+            if let snippet = folder.snippets.first(where: { $0.id == snippetID }) {
+                return (folder, snippet)
+            }
+        }
+        return nil
+    }
+
+    private func clearSnippetEditor() {
+        selectedSnippetID = nil
+        editingTitle = ""
+        editingContent = ""
+        resetScriptEditingState()
+        hasUnsavedChanges = false
+    }
+
+    private func resetScriptEditingState() {
+        editingSnippetType = .plainText
+        editingScriptShell = CPYSnippet.defaultScriptShell
+        editingScriptTimeout = CPYSnippet.defaultScriptTimeout
+        editingIsEphemeral = true
+        clearScriptTestResult()
+    }
+
+    private func loadEditingState(from snippet: SnippetItem) {
+        selectedSnippetID = snippet.id
+        editingTitle = snippet.title
+        editingContent = snippet.content
+        editingSnippetType = snippet.type
+        editingScriptShell = snippet.scriptShell
+        editingScriptTimeout = snippet.scriptTimeout
+        editingIsEphemeral = snippet.isEphemeral
+        clearScriptTestResult()
+        hasUnsavedChanges = false
     }
 
     func load() {
@@ -51,7 +128,16 @@ class SnippetsEditorViewModel: ObservableObject {
             let snippets = folder.snippets
                 .sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true)
                 .map { snippet in
-                    SnippetItem(id: snippet.identifier, title: snippet.title, content: snippet.content, enabled: snippet.enable)
+                    SnippetItem(
+                        id: snippet.identifier,
+                        title: snippet.title,
+                        content: snippet.content,
+                        enabled: snippet.enable,
+                        type: snippet.type,
+                        scriptShell: snippet.scriptShell,
+                        scriptTimeout: snippet.scriptTimeout,
+                        isEphemeral: snippet.isEphemeral
+                    )
                 }
             return FolderItem(id: folder.identifier, title: folder.title, enabled: folder.enable, isVault: folder.isVault, snippets: Array(snippets))
         }
@@ -61,38 +147,90 @@ class SnippetsEditorViewModel: ObservableObject {
             expandedFolderIDs.insert(folder.id)
         }
 
+        if let folderID = selectedFolderID, !folders.contains(where: { $0.id == folderID }) {
+            selectedFolderID = nil
+        }
+
         if selectedFolderID == nil {
             selectedFolderID = folders.first?.id
         }
 
         if let snippetID = selectedSnippetID {
-            if let folder = folders.first(where: { $0.snippets.contains(where: { $0.id == snippetID }) }),
-               let snippet = folder.snippets.first(where: { $0.id == snippetID }) {
-                editingTitle = snippet.title
-                editingContent = snippet.content
-                hasUnsavedChanges = false
+            guard let loaded = loadedSnippet(id: snippetID) else {
+                clearSnippetEditor()
+                return
             }
+            selectedFolderID = loaded.folder.id
+            loadEditingState(from: loaded.snippet)
         }
     }
 
     func selectSnippet(_ snippet: SnippetItem) {
         if hasUnsavedChanges { saveCurrentSnippet() }
-        selectedSnippetID = snippet.id
-        editingTitle = snippet.title
-        editingContent = snippet.content
-        hasUnsavedChanges = false
+        if let loaded = loadedSnippet(id: snippet.id) {
+            selectedFolderID = loaded.folder.id
+            loadEditingState(from: loaded.snippet)
+            return
+        }
+        loadEditingState(from: snippet)
+    }
+
+    func selectFolder(_ folderID: String) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        selectedFolderID = folderID
+        clearSnippetEditor()
     }
 
     func saveCurrentSnippet() {
         guard let snippetID = selectedSnippetID else { return }
         guard let realm = Realm.safeInstance() else { return }
         guard let snippet = realm.object(ofType: CPYSnippet.self, forPrimaryKey: snippetID) else { return }
+        let title = sanitizedSnippetTitle(editingTitle)
+        let scriptConfig = ScriptSnippetConfig(
+            shell: editingScriptShell,
+            timeoutSeconds: editingScriptTimeout,
+            isEphemeral: editingIsEphemeral
+        )
         realm.transaction {
-            snippet.title = editingTitle
+            snippet.title = title
             snippet.content = editingContent
+            snippet.type = editingSnippetType
+            snippet.scriptShell = scriptConfig.shell
+            snippet.scriptTimeout = scriptConfig.timeoutSeconds
+            snippet.isEphemeral = scriptConfig.isEphemeral
         }
+        editingTitle = title
+        editingScriptShell = scriptConfig.shell
+        editingScriptTimeout = scriptConfig.timeoutSeconds
         hasUnsavedChanges = false
         load()
+    }
+
+    func clearScriptTestResult() {
+        activeScriptTestRunID = nil
+        scriptTestResult = nil
+        isRunningScriptTest = false
+    }
+
+    func runScriptTest() {
+        guard selectedSnippetID != nil, editingSnippetType == .script, !isRunningScriptTest else { return }
+        let scriptConfig = ScriptSnippetConfig(
+            shell: editingScriptShell,
+            timeoutSeconds: editingScriptTimeout,
+            isEphemeral: editingIsEphemeral
+        )
+        let request = SnippetExecutionRequest(content: editingContent, type: .script, scriptConfig: scriptConfig)
+        let runID = UUID()
+        activeScriptTestRunID = runID
+        isRunningScriptTest = true
+        scriptTestResult = nil
+
+        scriptTestRunner(request) { [weak self] result in
+            guard self?.activeScriptTestRunID == runID else { return }
+            self?.scriptTestResult = result
+            self?.isRunningScriptTest = false
+            self?.activeScriptTestRunID = nil
+        }
     }
 
     func addFolder() {
@@ -100,15 +238,19 @@ class SnippetsEditorViewModel: ObservableObject {
         folder.merge()
         load()
         selectedFolderID = folder.identifier
+        clearSnippetEditor()
     }
 
     func removeFolder(_ folderID: String) {
         guard let realm = Realm.safeInstance() else { return }
         guard let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else { return }
+        let removesSelectedSnippet = selectedSnippetID.map { selectedSnippetID in
+            folder.snippets.contains(where: { $0.identifier == selectedSnippetID })
+        } ?? false
         folder.remove()
-        if selectedFolderID == folderID {
+        if selectedFolderID == folderID || removesSelectedSnippet {
             selectedFolderID = nil
-            selectedSnippetID = nil
+            clearSnippetEditor()
         }
         load()
     }
@@ -125,15 +267,60 @@ class SnippetsEditorViewModel: ObservableObject {
         }
     }
 
+    func installTemplate(_ template: SnippetTemplate) -> String? {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return nil }
+        guard let folder = templateInstallFolder(in: realm) else { return nil }
+
+        let snippet = folder.createSnippet()
+        snippet.title = template.name
+        snippet.content = template.content
+        snippet.type = .script
+        snippet.scriptShell = template.shell
+        snippet.scriptTimeout = template.timeoutSeconds
+        snippet.isEphemeral = template.isEphemeral
+        let installedID = snippet.identifier
+
+        folder.mergeSnippet(snippet)
+        selectedFolderID = folder.identifier
+        expandedFolderIDs.insert(folder.identifier)
+        load()
+
+        if let installed = loadedSnippet(id: installedID) {
+            selectedFolderID = installed.folder.id
+            loadEditingState(from: installed.snippet)
+        }
+
+        showingTemplateGallery = false
+        return installedID
+    }
+
+    private func templateInstallFolder(in realm: Realm) -> CPYFolder? {
+        if let selectedFolderID,
+           let selectedFolder = realm.object(ofType: CPYFolder.self, forPrimaryKey: selectedFolderID),
+           !selectedFolder.isVault {
+            return selectedFolder
+        }
+
+        if let existingFolder = realm.objects(CPYFolder.self)
+            .filter("title == %@ AND isVault == false", Self.defaultTemplateFolderTitle)
+            .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
+            .first {
+            return existingFolder
+        }
+
+        let folder = CPYFolder.create()
+        folder.title = Self.defaultTemplateFolderTitle
+        realm.transaction { realm.add(folder, update: .all) }
+        return realm.object(ofType: CPYFolder.self, forPrimaryKey: folder.identifier)
+    }
+
     func removeSnippet(_ snippetID: String) {
         guard let realm = Realm.safeInstance() else { return }
         guard let snippet = realm.object(ofType: CPYSnippet.self, forPrimaryKey: snippetID) else { return }
         snippet.remove()
         if selectedSnippetID == snippetID {
-            selectedSnippetID = nil
-            editingTitle = ""
-            editingContent = ""
-            hasUnsavedChanges = false
+            clearSnippetEditor()
         }
         load()
     }
@@ -165,7 +352,8 @@ class SnippetsEditorViewModel: ObservableObject {
     func renameFolder(_ folderID: String, to newTitle: String) {
         guard let realm = Realm.safeInstance() else { return }
         guard let folder = realm.object(ofType: CPYFolder.self, forPrimaryKey: folderID) else { return }
-        realm.transaction { folder.title = newTitle }
+        let title = sanitizedFolderTitle(newTitle)
+        realm.transaction { folder.title = title }
         load()
     }
 
@@ -176,6 +364,9 @@ class SnippetsEditorViewModel: ObservableObject {
     var totalSnippetCount: Int {
         folders.reduce(0) { $0 + $1.snippets.count }
     }
+}
+
+extension SnippetsEditorViewModel {
 
     // MARK: - Arrow Key Navigation
 
@@ -264,10 +455,7 @@ class SnippetsEditorViewModel: ObservableObject {
             // On a snippet — jump back to its folder
             if let folder = folders.first(where: { $0.snippets.contains(where: { $0.id == sid }) }) {
                 selectedFolderID = folder.id
-                selectedSnippetID = nil
-                editingTitle = ""
-                editingContent = ""
-                hasUnsavedChanges = false
+                clearSnippetEditor()
             }
         } else if let fid = selectedFolderID, expandedFolderIDs.contains(fid) {
             withAnimation(.easeOut(duration: 0.15)) { expandedFolderIDs.remove(fid) }
@@ -276,14 +464,8 @@ class SnippetsEditorViewModel: ObservableObject {
 
     private func selectItem(_ item: (kind: String, id: String, folderID: String?)) {
         if item.kind == "folder" {
-            if hasUnsavedChanges { saveCurrentSnippet() }
-            selectedFolderID = item.id
-            selectedSnippetID = nil
-            editingTitle = ""
-            editingContent = ""
-            hasUnsavedChanges = false
+            selectFolder(item.id)
         } else if let snippet = folders.flatMap({ $0.snippets }).first(where: { $0.id == item.id }) {
-            selectedFolderID = item.folderID
             selectSnippet(snippet)
         }
     }
@@ -312,27 +494,10 @@ class SnippetsEditorViewModel: ObservableObject {
     // MARK: - Import / Export
 
     func exportSnippets() {
-        let xmlDocument = AEXMLDocument()
-        let rootElement = xmlDocument.addChild(name: Constants.Xml.rootElement)
-
         guard let realm = Realm.safeInstance() else { return }
         let realmFolders = realm.objects(CPYFolder.self)
             .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
-
-        realmFolders.forEach { folder in
-            // Skip vault folders — protected content should not be exported
-            if folder.isVault { return }
-            let folderElement = rootElement.addChild(name: Constants.Xml.folderElement)
-            folderElement.addChild(name: Constants.Xml.titleElement, value: folder.title)
-            let snippetsElement = folderElement.addChild(name: Constants.Xml.snippetsElement)
-            folder.snippets
-                .sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true)
-                .forEach { snippet in
-                    let snippetElement = snippetsElement.addChild(name: Constants.Xml.snippetElement)
-                    snippetElement.addChild(name: Constants.Xml.titleElement, value: snippet.title)
-                    snippetElement.addChild(name: Constants.Xml.contentElement, value: snippet.content)
-                }
-        }
+        let xmlDocument = SnippetXMLCoder.xmlDocument(from: realmFolders, includeVaultFolders: false)
 
         let panel = NSSavePanel()
         panel.canSelectHiddenExtension = true
@@ -363,32 +528,11 @@ class SnippetsEditorViewModel: ObservableObject {
             guard let realm = Realm.safeInstance() else { return }
             let lastFolder = realm.objects(CPYFolder.self)
                 .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true).last
-            var folderIndex = (lastFolder?.index ?? -1) + 1
-
-            var options = AEXMLOptions()
-            options.parserSettings.shouldTrimWhitespace = false
-            let xmlDocument = try AEXMLDocument(xml: data, options: options)
+            let folderIndex = (lastFolder?.index ?? -1) + 1
+            let importedFolders = try SnippetXMLCoder.importFolders(from: data, startingAt: folderIndex)
 
             realm.transaction {
-                xmlDocument[Constants.Xml.rootElement].children.forEach { folderElement in
-                    let folder = CPYFolder()
-                    folder.title = folderElement[Constants.Xml.titleElement].value ?? "untitled folder"
-                    folder.index = folderIndex
-                    realm.add(folder)
-
-                    var snippetIndex = 0
-                    folderElement[Constants.Xml.snippetsElement][Constants.Xml.snippetElement]
-                        .all?
-                        .forEach { snippetElement in
-                            let snippet = CPYSnippet()
-                            snippet.title = snippetElement[Constants.Xml.titleElement].value ?? "untitled snippet"
-                            snippet.content = snippetElement[Constants.Xml.contentElement].value ?? ""
-                            snippet.index = snippetIndex
-                            folder.snippets.append(snippet)
-                            snippetIndex += 1
-                        }
-                    folderIndex += 1
-                }
+                importedFolders.forEach { realm.add($0) }
             }
             load()
         } catch {
@@ -397,12 +541,423 @@ class SnippetsEditorViewModel: ObservableObject {
     }
 }
 
+extension SnippetsEditorViewModel {
+    private struct SnippetLocation {
+        let folderID: String
+        let snippetID: String
+        let index: Int
+    }
+
+    func moveFolder(id folderID: String, toIndex destinationIndex: Int) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return }
+        var orderedFolders = Array(realm.objects(CPYFolder.self).sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true))
+        guard let sourceIndex = orderedFolders.firstIndex(where: { $0.identifier == folderID }) else { return }
+
+        let folder = orderedFolders.remove(at: sourceIndex)
+        let boundedIndex = min(max(destinationIndex, 0), orderedFolders.count)
+        orderedFolders.insert(folder, at: boundedIndex)
+
+        realm.transaction {
+            for (index, folder) in orderedFolders.enumerated() {
+                folder.index = index
+            }
+        }
+
+        selectedFolderID = folderID
+        clearSnippetEditor()
+        load()
+    }
+
+    func moveSnippet(id snippetID: String, toFolderID destinationFolderID: String, toIndex destinationIndex: Int) {
+        if hasUnsavedChanges { saveCurrentSnippet() }
+        guard let realm = Realm.safeInstance() else { return }
+        let folders = Array(realm.objects(CPYFolder.self))
+        guard let sourceFolder = folders.first(where: { folder in
+            folder.snippets.contains(where: { $0.identifier == snippetID })
+        }),
+        let destinationFolder = realm.object(ofType: CPYFolder.self, forPrimaryKey: destinationFolderID) else { return }
+
+        var sourceSnippets = Array(sourceFolder.snippets.sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true))
+        guard let sourceIndex = sourceSnippets.firstIndex(where: { $0.identifier == snippetID }) else { return }
+        let snippet = sourceSnippets.remove(at: sourceIndex)
+
+        if sourceFolder.identifier == destinationFolder.identifier {
+            let boundedIndex = min(max(destinationIndex, 0), sourceSnippets.count)
+            sourceSnippets.insert(snippet, at: boundedIndex)
+            realm.transaction {
+                sourceFolder.snippets.removeAll()
+                sourceFolder.snippets.append(objectsIn: sourceSnippets)
+                for (index, snippet) in sourceSnippets.enumerated() {
+                    snippet.index = index
+                }
+            }
+        } else {
+            var destinationSnippets = Array(destinationFolder.snippets.sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true))
+            let boundedIndex = min(max(destinationIndex, 0), destinationSnippets.count)
+            destinationSnippets.insert(snippet, at: boundedIndex)
+            realm.transaction {
+                sourceFolder.snippets.removeAll()
+                sourceFolder.snippets.append(objectsIn: sourceSnippets)
+                destinationFolder.snippets.removeAll()
+                destinationFolder.snippets.append(objectsIn: destinationSnippets)
+                for (index, snippet) in sourceSnippets.enumerated() {
+                    snippet.index = index
+                }
+                for (index, snippet) in destinationSnippets.enumerated() {
+                    snippet.index = index
+                }
+            }
+        }
+
+        selectedFolderID = destinationFolderID
+        selectedSnippetID = snippetID
+        editingTitle = snippet.title
+        editingContent = snippet.content
+        editingSnippetType = snippet.type
+        editingScriptShell = snippet.scriptShell
+        editingScriptTimeout = snippet.scriptTimeout
+        editingIsEphemeral = snippet.isEphemeral
+        clearScriptTestResult()
+        hasUnsavedChanges = false
+        expandedFolderIDs.insert(destinationFolderID)
+        load()
+    }
+
+    func dropIndicator(for payload: SnippetDragPayload, target: SnippetDropTarget) -> SnippetDropIndicator? {
+        switch payload {
+        case .folder(let sourceFolderID):
+            guard case let .folder(targetFolderID, targetIndex, _, _) = target,
+                  sourceFolderID != targetFolderID,
+                  let sourceIndex = folders.firstIndex(where: { $0.id == sourceFolderID }) else { return nil }
+
+            return .folder(folderID: targetFolderID, edge: sourceIndex < targetIndex ? .after : .before)
+        case .snippet(let snippetID):
+            guard let sourceLocation = snippetLocation(for: snippetID) else { return nil }
+
+            switch target {
+            case let .folder(folderID, _, _, true):
+                guard !isSameFolderEnd(sourceLocation: sourceLocation, folderID: folderID) else { return nil }
+                return .snippetEnd(folderID: folderID)
+            case let .snippet(folderID, snippetIndex):
+                guard let targetSnippet = snippet(inFolderID: folderID, at: snippetIndex),
+                      targetSnippet.snippetID != snippetID else { return nil }
+
+                let edge: SnippetDropIndicatorEdge
+                if sourceLocation.folderID == folderID {
+                    edge = sourceLocation.index < snippetIndex ? .after : .before
+                } else {
+                    edge = .before
+                }
+                return .snippet(snippetID: targetSnippet.snippetID, edge: edge)
+            case let .snippetEnd(folderID, _):
+                guard !isSameFolderEnd(sourceLocation: sourceLocation, folderID: folderID) else { return nil }
+                return .snippetEnd(folderID: folderID)
+            case .folder(_, _, _, false):
+                return nil
+            }
+        }
+    }
+
+    private func snippetLocation(for snippetID: String) -> SnippetLocation? {
+        for folder in folders {
+            if let index = folder.snippets.firstIndex(where: { $0.id == snippetID }) {
+                return SnippetLocation(folderID: folder.id, snippetID: snippetID, index: index)
+            }
+        }
+        return nil
+    }
+
+    private func snippet(inFolderID folderID: String, at index: Int) -> SnippetLocation? {
+        guard let folder = folders.first(where: { $0.id == folderID }),
+              folder.snippets.indices.contains(index) else { return nil }
+
+        return SnippetLocation(folderID: folderID, snippetID: folder.snippets[index].id, index: index)
+    }
+
+    private func isSameFolderEnd(sourceLocation: SnippetLocation, folderID: String) -> Bool {
+        guard sourceLocation.folderID == folderID,
+              let folder = folders.first(where: { $0.id == folderID }) else { return false }
+
+        return sourceLocation.index == folder.snippets.count - 1
+    }
+}
+
+enum SnippetDragPayload {
+    private static let prefix = "clipy-snippet-editor-reorder:"
+    static let contentType = UTType(exportedAs: "com.clipyapp.clipy.snippet-reorder")
+
+    case folder(String)
+    case snippet(String)
+
+    init?(rawValue: String) {
+        guard rawValue.hasPrefix(Self.prefix) else { return nil }
+
+        let payload = rawValue.dropFirst(Self.prefix.count)
+        let parts = payload.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+
+        switch parts[0] {
+        case "folder":
+            self = .folder(parts[1])
+        case "snippet":
+            self = .snippet(parts[1])
+        default:
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .folder(let identifier):
+            return "\(Self.prefix)folder:\(identifier)"
+        case .snippet(let identifier):
+            return "\(Self.prefix)snippet:\(identifier)"
+        }
+    }
+}
+
+enum SnippetDropIndicatorEdge {
+    case before
+    case after
+}
+
+enum SnippetDropIndicator: Equatable {
+    case folder(folderID: String, edge: SnippetDropIndicatorEdge)
+    case snippet(snippetID: String, edge: SnippetDropIndicatorEdge)
+    case snippetEnd(folderID: String)
+}
+
+enum SnippetDropTarget {
+    case folder(folderID: String, folderIndex: Int, snippetCount: Int, acceptsSnippets: Bool)
+    case snippet(folderID: String, snippetIndex: Int)
+    case snippetEnd(folderID: String, snippetCount: Int)
+
+    var acceptedTypes: [UTType] {
+        [SnippetDragPayload.contentType]
+    }
+}
+
+private struct SnippetDropDelegate: DropDelegate {
+    let target: SnippetDropTarget
+    let actions: SnippetDropActions
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: target.acceptedTypes)
+    }
+
+    func dropEntered(info: DropInfo) {
+        actions.entered(target)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        actions.exited(target)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let type = target.acceptedTypes.first(where: { !info.itemProviders(for: [$0]).isEmpty }),
+              let provider = info.itemProviders(for: [type]).first else {
+            actions.ended()
+            return false
+        }
+
+        provider.loadItem(forTypeIdentifier: type.identifier, options: nil) { item, _ in
+            DispatchQueue.main.async {
+                defer { actions.ended() }
+                guard let rawValue = Self.rawString(from: item),
+                      let payload = SnippetDragPayload(rawValue: rawValue) else { return }
+                actions.payload(payload, target)
+            }
+        }
+        return true
+    }
+
+    private static func rawString(from item: NSSecureCoding?) -> String? {
+        if let string = item as? String {
+            return string
+        }
+        if let string = item as? NSString {
+            return string as String
+        }
+        if let data = item as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
+    }
+}
+
+private struct SnippetDropActions {
+    let payload: (SnippetDragPayload, SnippetDropTarget) -> Void
+    let entered: (SnippetDropTarget) -> Void
+    let exited: (SnippetDropTarget) -> Void
+    let ended: () -> Void
+}
+
+private extension View {
+    @ViewBuilder
+    func snippetReorderDrag(enabled: Bool, provider: @escaping () -> NSItemProvider) -> some View {
+        if enabled {
+            self.onDrag(provider)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func snippetReorderDrop(
+        enabled: Bool,
+        target: SnippetDropTarget,
+        actions: SnippetDropActions
+    ) -> some View {
+        if enabled {
+            self.onDrop(
+                of: target.acceptedTypes,
+                delegate: SnippetDropDelegate(target: target, actions: actions)
+            )
+        } else {
+            self
+        }
+    }
+}
+
+private struct SnippetDragHandle: View {
+    let reorderEnabled: Bool
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(reorderEnabled ? AnyShapeStyle(.quaternary) : AnyShapeStyle(SwiftUI.Color.clear))
+            .frame(width: 12, height: 16)
+            .contentShape(Rectangle())
+            .help(reorderEnabled ? "Drag to reorder" : "Reordering is disabled while filtering")
+    }
+}
+
+private struct SnippetInsertionIndicatorLine: View {
+    var body: some View {
+        Capsule()
+            .fill(SwiftUI.Color.accentColor)
+            .frame(height: 2)
+            .shadow(color: SwiftUI.Color.accentColor.opacity(0.45), radius: 3, y: 1)
+            .padding(.horizontal, 8)
+            .transition(.opacity)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func snippetInsertionIndicator(_ edge: SnippetDropIndicatorEdge?, leadingPadding: CGFloat) -> some View {
+        if let edge {
+            self.overlay(alignment: edge == .before ? .top : .bottom) {
+                SnippetInsertionIndicatorLine()
+                    .padding(.leading, leadingPadding)
+            }
+        } else {
+            self
+        }
+    }
+}
+
+private struct WindowDragRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView {
+        DragView()
+    }
+
+    func updateNSView(_ nsView: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            window?.performDrag(with: event)
+        }
+    }
+}
+
 // MARK: - Main Editor View
 // swiftlint:disable:next type_body_length
 struct ModernSnippetsEditorView: View {
     @StateObject private var viewModel = SnippetsEditorViewModel()
+    @State private var draggedPayload: SnippetDragPayload?
+    @State private var dropIndicator: SnippetDropIndicator?
     @FocusState private var sidebarFocused: Bool
+    @FocusState private var snippetTitleFocused: Bool
     let onClose: () -> Void
+
+    private var reorderEnabled: Bool {
+        viewModel.sidebarFilter.isEmpty
+    }
+
+    private var closeButtonTrailingPadding: CGFloat {
+        #if DEBUG
+        52
+        #else
+        8
+        #endif
+    }
+
+    private var scriptShellOptions: [String] {
+        [CPYSnippet.defaultScriptShell, "/bin/zsh", "/bin/bash"]
+    }
+
+    private var scriptTestOutputPreviewLimit: Int {
+        8_000
+    }
+
+    private var snippetTypeBinding: Binding<CPYSnippet.SnippetType> {
+        Binding(
+            get: { viewModel.editingSnippetType },
+            set: { newValue in
+                viewModel.editingSnippetType = newValue
+                viewModel.hasUnsavedChanges = true
+                viewModel.clearScriptTestResult()
+            }
+        )
+    }
+
+    private var scriptShellBinding: Binding<String> {
+        Binding(
+            get: { viewModel.editingScriptShell },
+            set: { newValue in
+                viewModel.editingScriptShell = newValue
+                viewModel.hasUnsavedChanges = true
+                viewModel.clearScriptTestResult()
+            }
+        )
+    }
+
+    private var scriptTimeoutBinding: Binding<Int> {
+        Binding(
+            get: { viewModel.editingScriptTimeout },
+            set: { newValue in
+                viewModel.editingScriptTimeout = newValue
+                viewModel.hasUnsavedChanges = true
+                viewModel.clearScriptTestResult()
+            }
+        )
+    }
+
+    private var scriptEphemeralBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.editingIsEphemeral },
+            set: { newValue in
+                viewModel.editingIsEphemeral = newValue
+                viewModel.hasUnsavedChanges = true
+                viewModel.clearScriptTestResult()
+            }
+        )
+    }
+
+    private var dropActions: SnippetDropActions {
+        SnippetDropActions(
+            payload: handleDrop,
+            entered: handleDropEntered,
+            exited: handleDropExited,
+            ended: clearDropPreview
+        )
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -419,6 +974,28 @@ struct ModernSnippetsEditorView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
+        .overlay(alignment: .top) {
+            WindowDragRegion()
+                .frame(height: 8)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(.white.opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Close")
+            .padding(.top, 8)
+            .padding(.trailing, closeButtonTrailingPadding)
+        }
         .overlay(DevBadgeOverlay())
         .onAppear { viewModel.load() }
         .onChange(of: viewModel.needsRefocus) { _, needs in
@@ -457,12 +1034,17 @@ struct ModernSnippetsEditorView: View {
             // Folder list
             ScrollView {
                 LazyVStack(spacing: 2) {
-                    ForEach(viewModel.filteredFolders) { folder in
+                    ForEach(Array(viewModel.filteredFolders.enumerated()), id: \.element.id) { folderIndex, folder in
                         SnippetFolderRow(
                             folder: folder,
+                            folderIndex: folderIndex,
                             isSelected: viewModel.selectedFolderID == folder.id,
                             selectedSnippetID: viewModel.selectedSnippetID,
-                            onSelectFolder: { viewModel.selectedFolderID = folder.id },
+                            reorderEnabled: reorderEnabled,
+                            dropIndicator: dropIndicator,
+                            dragProvider: dragProvider,
+                            dropActions: dropActions,
+                            onSelectFolder: { viewModel.selectFolder(folder.id) },
                             onSelectSnippet: { viewModel.selectSnippet($0) },
                             onAddSnippet: { viewModel.addSnippet(to: folder.id) },
                             onDeleteFolder: { viewModel.removeFolder(folder.id) },
@@ -474,8 +1056,11 @@ struct ModernSnippetsEditorView: View {
                             isExpanded: Binding(
                                 get: { viewModel.expandedFolderIDs.contains(folder.id) },
                                 set: { newValue in
-                                    if newValue { viewModel.expandedFolderIDs.insert(folder.id) }
-                                    else { viewModel.expandedFolderIDs.remove(folder.id) }
+                                    if newValue {
+                                        viewModel.expandedFolderIDs.insert(folder.id)
+                                    } else {
+                                        viewModel.expandedFolderIDs.remove(folder.id)
+                                    }
                                 }
                             )
                         )
@@ -500,6 +1085,61 @@ struct ModernSnippetsEditorView: View {
         .onKeyPress(.leftArrow, phases: .down) { _ in viewModel.collapseSelected(); return .handled }
     }
 
+    private func dragProvider(for payload: SnippetDragPayload) -> NSItemProvider {
+        draggedPayload = payload
+        let provider = NSItemProvider()
+        provider.registerDataRepresentation(
+            forTypeIdentifier: SnippetDragPayload.contentType.identifier,
+            visibility: .ownProcess
+        ) { completion in
+            completion(payload.rawValue.data(using: .utf8), nil)
+            return nil
+        }
+        provider.suggestedName = "Clipy Snippet Reorder"
+        return provider
+    }
+
+    private func handleDropEntered(target: SnippetDropTarget) {
+        guard reorderEnabled, let draggedPayload else { return }
+        withAnimation(.easeInOut(duration: 0.1)) {
+            dropIndicator = viewModel.dropIndicator(for: draggedPayload, target: target)
+        }
+    }
+
+    private func handleDropExited(target _: SnippetDropTarget) {
+        withAnimation(.easeInOut(duration: 0.08)) {
+            dropIndicator = nil
+        }
+    }
+
+    private func clearDropPreview() {
+        withAnimation(.easeInOut(duration: 0.08)) {
+            draggedPayload = nil
+            dropIndicator = nil
+        }
+    }
+
+    private func handleDrop(payload: SnippetDragPayload, target: SnippetDropTarget) {
+        guard reorderEnabled else { return }
+
+        switch payload {
+        case .folder(let folderID):
+            guard case let .folder(_, folderIndex, _, _) = target else { return }
+            viewModel.moveFolder(id: folderID, toIndex: folderIndex)
+        case .snippet(let snippetID):
+            switch target {
+            case let .folder(folderID, _, snippetCount, true):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetCount)
+            case let .snippet(folderID, snippetIndex):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetIndex)
+            case let .snippetEnd(folderID, snippetCount):
+                viewModel.moveSnippet(id: snippetID, toFolderID: folderID, toIndex: snippetCount)
+            case .folder(_, _, _, false):
+                return
+            }
+        }
+    }
+
     private var sidebarFooter: some View {
         HStack(spacing: 6) {
             // Add folder
@@ -514,6 +1154,13 @@ struct ModernSnippetsEditorView: View {
                         viewModel.addSnippet(to: folderID)
                     }
                 }
+            }
+
+            SnippetToolbarButton(icon: "terminal.fill", help: "Add Script Template") {
+                viewModel.showingTemplateGallery = true
+            }
+            .popover(isPresented: $viewModel.showingTemplateGallery, arrowEdge: .bottom) {
+                SnippetTemplateGalleryView(viewModel: viewModel)
             }
 
             Spacer()
@@ -546,7 +1193,11 @@ struct ModernSnippetsEditorView: View {
                     Divider().opacity(0.3)
                     editorBody
                     Divider().opacity(0.3)
-                    variablesBar
+                    if viewModel.editingSnippetType == .script {
+                        scriptTestPanel
+                    } else {
+                        variablesBar
+                    }
                     Divider().opacity(0.3)
                     editorFooter
                 }
@@ -558,41 +1209,115 @@ struct ModernSnippetsEditorView: View {
     }
 
     private func editorHeader(snippet: SnippetsEditorViewModel.SnippetItem, folder: SnippetsEditorViewModel.FolderItem) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "doc.text.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.blue)
-                .frame(width: 26, height: 26)
-                .background(.blue.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: viewModel.editingSnippetType == .script ? "terminal.fill" : "doc.text.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(viewModel.editingSnippetType == .script ? .green : .blue)
+                    .frame(width: 26, height: 26)
+                    .background((viewModel.editingSnippetType == .script ? SwiftUI.Color.green : .blue).opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
-            TextField("Snippet title", text: $viewModel.editingTitle)
-                .textFieldStyle(.plain)
-                .font(.system(size: 15, weight: .medium))
-                .onChange(of: viewModel.editingTitle) { _, _ in
-                    viewModel.hasUnsavedChanges = true
+                TextField("Snippet title", text: $viewModel.editingTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 15, weight: .medium))
+                    .focused($snippetTitleFocused)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(
+                        snippetTitleFocused
+                            ? AnyShapeStyle(.white.opacity(0.08))
+                            : AnyShapeStyle(SwiftUI.Color.clear)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(
+                                snippetTitleFocused ? SwiftUI.Color.accentColor.opacity(0.65) : .white.opacity(0.08),
+                                lineWidth: 1
+                            )
+                    )
+                    .onChange(of: viewModel.editingTitle) { _, _ in
+                        viewModel.hasUnsavedChanges = true
+                    }
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 8))
+                    Text(folder.title)
+                        .font(.system(size: 9, weight: .medium))
                 }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+                .foregroundStyle(.secondary)
 
-            Spacer()
-
-            // Folder breadcrumb
-            HStack(spacing: 3) {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 8))
-                Text(folder.title)
-                    .font(.system(size: 9, weight: .medium))
+                Circle()
+                    .fill(snippet.enabled ? SwiftUI.Color.green : SwiftUI.Color.gray)
+                    .frame(width: 7, height: 7)
+                    .help(snippet.enabled ? "Enabled" : "Disabled")
             }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-            .foregroundStyle(.secondary)
 
-            // Enabled/disabled badge
-            Circle()
-                .fill(snippet.enabled ? SwiftUI.Color.green : SwiftUI.Color.gray)
-                .frame(width: 7, height: 7)
-                .help(snippet.enabled ? "Enabled" : "Disabled")
+            VStack(alignment: .leading, spacing: 7) {
+                Picker("", selection: snippetTypeBinding) {
+                    Text("Text").tag(CPYSnippet.SnippetType.plainText)
+                    Text("Script").tag(CPYSnippet.SnippetType.script)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 132)
+
+                if viewModel.editingSnippetType == .script {
+                    HStack(spacing: 10) {
+                        Picker("", selection: scriptShellBinding) {
+                            ForEach(scriptShellOptions, id: \.self) { shell in
+                                Text(shell).tag(shell)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 96)
+                        .help("Shell")
+
+                        Stepper(value: scriptTimeoutBinding, in: ScriptSnippetConfig.minimumTimeoutSeconds...ScriptSnippetConfig.maximumTimeoutSeconds) {
+                            Label("\(viewModel.editingScriptTimeout)s", systemImage: "timer")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .frame(width: 104)
+                        .help("Timeout")
+
+                        Toggle(isOn: scriptEphemeralBinding) {
+                            Text("Ephemeral output")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .toggleStyle(.checkbox)
+                        .help("Do not save script output to clipboard history")
+
+                        Spacer(minLength: 4)
+
+                        Button {
+                            viewModel.runScriptTest()
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: viewModel.isRunningScriptTest ? "hourglass" : "play.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                Text(viewModel.isRunningScriptTest ? "Running" : "Test Run")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.white.opacity(0.07))
+                            .foregroundStyle(.secondary)
+                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(viewModel.isRunningScriptTest)
+                    }
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -606,6 +1331,9 @@ struct ModernSnippetsEditorView: View {
             .padding(.vertical, 8)
             .onChange(of: viewModel.editingContent) { _, _ in
                 viewModel.hasUnsavedChanges = true
+                if viewModel.editingSnippetType == .script {
+                    viewModel.clearScriptTestResult()
+                }
             }
     }
 
@@ -640,6 +1368,92 @@ struct ModernSnippetsEditorView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
+        }
+    }
+
+    private var scriptTestPanel: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: scriptTestStatusIcon)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(scriptTestStatusColor)
+
+                Text(scriptTestStatusText)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if let result = viewModel.scriptTestResult {
+                    Text("exit \(result.exitCode)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+
+                    if result.timedOut {
+                        Text("timeout")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+
+            if let result = viewModel.scriptTestResult {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        scriptTestOutputBlock(title: "stdout", value: previewScriptTestOutput(result.output))
+                        scriptTestOutputBlock(title: "stderr", value: previewScriptTestOutput(result.stderr))
+                        if let launchError = result.launchError {
+                            scriptTestOutputBlock(title: "launch", value: previewScriptTestOutput(launchError))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 92)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.black.opacity(0.025))
+    }
+
+    private var scriptTestStatusIcon: String {
+        if viewModel.isRunningScriptTest { return "hourglass" }
+        guard let result = viewModel.scriptTestResult else { return "play.circle" }
+        if result.timedOut { return "timer" }
+        return result.exitCode == 0 && result.launchError == nil ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var scriptTestStatusText: String {
+        if viewModel.isRunningScriptTest { return "Running script" }
+        guard let result = viewModel.scriptTestResult else { return "No test run" }
+        if result.timedOut { return "Timed out" }
+        if result.launchError != nil { return "Launch failed" }
+        return result.exitCode == 0 ? "Finished" : "Failed"
+    }
+
+    private var scriptTestStatusColor: SwiftUI.Color {
+        if viewModel.isRunningScriptTest { return .secondary }
+        guard let result = viewModel.scriptTestResult else { return .secondary.opacity(0.55) }
+        if result.timedOut { return .orange }
+        return result.exitCode == 0 && result.launchError == nil ? .green : .red
+    }
+
+    private func previewScriptTestOutput(_ value: String) -> String {
+        guard value.count > scriptTestOutputPreviewLimit else { return value }
+        let visible = value.prefix(scriptTestOutputPreviewLimit)
+        return "\(visible)\n... truncated \(value.count - scriptTestOutputPreviewLimit) characters"
+    }
+
+    private func scriptTestOutputBlock(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(.tertiary)
+            Text(value.isEmpty ? "(empty)" : value)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -721,11 +1535,114 @@ struct ModernSnippetsEditorView: View {
     }
 }
 
+// MARK: - Template Gallery
+private struct SnippetTemplateGalleryView: View {
+    @ObservedObject var viewModel: SnippetsEditorViewModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "terminal.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.green)
+                Text("Script Templates")
+                    .font(.system(size: 14, weight: .semibold))
+                Spacer()
+                Button {
+                    viewModel.showingTemplateGallery = false
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 22)
+                        .background(.white.opacity(0.07))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Close")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider().opacity(0.35)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(SnippetTemplateLibrary.categories, id: \.self) { category in
+                        templateSection(category)
+                    }
+                }
+                .padding(12)
+            }
+        }
+        .frame(width: 420, height: 420)
+        .background(.regularMaterial)
+    }
+
+    private func templateSection(_ category: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(category.uppercased())
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 4)
+
+            ForEach(SnippetTemplateLibrary.templates(in: category)) { template in
+                templateRow(template)
+            }
+        }
+    }
+
+    private func templateRow(_ template: SnippetTemplate) -> some View {
+        HStack(spacing: 9) {
+            Image(systemName: template.systemImageName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.green)
+                .frame(width: 28, height: 28)
+                .background(SwiftUI.Color.green.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(template.name)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.primary)
+                Text(template.summary)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 6)
+
+            Button {
+                _ = viewModel.installTemplate(template)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.green)
+                    .frame(width: 24, height: 24)
+                    .background(SwiftUI.Color.green.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .help("Add")
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(.white.opacity(0.035))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+    }
+}
+
 // MARK: - Folder Row
-struct SnippetFolderRow: View {
+private struct SnippetFolderRow: View {
     let folder: SnippetsEditorViewModel.FolderItem
+    let folderIndex: Int
     let isSelected: Bool
     let selectedSnippetID: String?
+    let reorderEnabled: Bool
+    let dropIndicator: SnippetDropIndicator?
+    let dragProvider: (SnippetDragPayload) -> NSItemProvider
+    let dropActions: SnippetDropActions
     let onSelectFolder: () -> Void
     let onSelectSnippet: (SnippetsEditorViewModel.SnippetItem) -> Void
     let onAddSnippet: () -> Void
@@ -741,11 +1658,14 @@ struct SnippetFolderRow: View {
     @State private var editedTitle = ""
     @State private var isHovered = false
     @State private var isVaultUnlocked = false
+    @FocusState private var titleFieldFocused: Bool
 
     var body: some View {
         VStack(spacing: 1) {
             // Folder header
             HStack(spacing: 6) {
+                SnippetDragHandle(reorderEnabled: reorderEnabled)
+
                 Button {
                     if folder.isVault && !isVaultUnlocked && !isExpanded {
                         VaultAuthService.shared.authenticate(folderID: folder.id, reason: "Unlock \"\(folder.title)\" vault") { success in
@@ -783,12 +1703,31 @@ struct SnippetFolderRow: View {
                     .foregroundStyle(folder.isVault ? (isVaultUnlocked ? SwiftUI.Color.green : SwiftUI.Color.orange) : folder.enabled ? SwiftUI.Color.accentColor : .secondary)
 
                 if isEditing {
-                    TextField("", text: $editedTitle, onCommit: {
-                        onRenameFolder(editedTitle)
-                        isEditing = false
-                    })
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
+                    TextField("", text: $editedTitle, onCommit: commitRename)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .medium))
+                        .focused($titleFieldFocused)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.white.opacity(0.09))
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .strokeBorder(
+                                    titleFieldFocused ? SwiftUI.Color.accentColor.opacity(0.75) : .white.opacity(0.12),
+                                    lineWidth: 1
+                                )
+                        )
+                        .onAppear {
+                            DispatchQueue.main.async {
+                                titleFieldFocused = true
+                            }
+                        }
+                        .onChange(of: titleFieldFocused) { _, focused in
+                            if !focused && isEditing {
+                                commitRename()
+                            }
+                        }
                 } else {
                     Text(folder.title)
                         .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
@@ -832,10 +1771,24 @@ struct SnippetFolderRow: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .contentShape(Rectangle())
+            .snippetInsertionIndicator(folderHeaderIndicatorEdge, leadingPadding: 0)
             .onTapGesture { onSelectFolder() }
             .onHover { hovering in
                 withAnimation(.easeInOut(duration: 0.12)) { isHovered = hovering }
             }
+            .snippetReorderDrag(enabled: reorderEnabled) {
+                dragProvider(.folder(folder.id))
+            }
+            .snippetReorderDrop(
+                enabled: reorderEnabled,
+                target: .folder(
+                    folderID: folder.id,
+                    folderIndex: folderIndex,
+                    snippetCount: folder.snippets.count,
+                    acceptsSnippets: !folder.isVault || isVaultUnlocked
+                ),
+                actions: dropActions
+            )
             .contextMenu {
                 Button("Add Snippet") { onAddSnippet() }
                 Button(folder.enabled ? "Disable" : "Enable") { onToggleFolder() }
@@ -858,24 +1811,76 @@ struct SnippetFolderRow: View {
 
             // Snippet rows (vault folders require auth to see snippets)
             if isExpanded && (!folder.isVault || isVaultUnlocked) {
-                ForEach(folder.snippets) { snippet in
+                ForEach(Array(folder.snippets.enumerated()), id: \.element.id) { snippetIndex, snippet in
                     SnippetItemRow(
                         snippet: snippet,
+                        folderID: folder.id,
+                        snippetIndex: snippetIndex,
                         isSelected: selectedSnippetID == snippet.id,
+                        reorderEnabled: reorderEnabled,
+                        dropIndicator: dropIndicator,
+                        dragProvider: dragProvider,
+                        dropActions: dropActions,
                         onSelect: { onSelectSnippet(snippet) },
                         onDelete: { onDeleteSnippet(snippet) },
                         onToggle: { onToggleSnippet(snippet) }
                     )
                 }
+
+                ZStack {
+                    if showsSnippetEndIndicatorInExpandedFolder {
+                        SnippetInsertionIndicatorLine()
+                            .padding(.leading, 26)
+                    }
+                }
+                .frame(height: 6)
+                .snippetReorderDrop(
+                    enabled: reorderEnabled,
+                    target: .snippetEnd(folderID: folder.id, snippetCount: folder.snippets.count),
+                    actions: dropActions
+                )
             }
         }
+    }
+
+    private func commitRename() {
+        onRenameFolder(editedTitle)
+        isEditing = false
+    }
+
+    private var folderHeaderIndicatorEdge: SnippetDropIndicatorEdge? {
+        if case let .folder(folderID, edge) = dropIndicator, folderID == folder.id {
+            return edge
+        }
+        if case let .snippetEnd(folderID) = dropIndicator,
+           folderID == folder.id,
+           !showsSnippetEndIndicatorInExpandedFolder {
+            return .after
+        }
+        return nil
+    }
+
+    private var showsSnippetEndIndicatorInExpandedFolder: Bool {
+        if case let .snippetEnd(folderID) = dropIndicator,
+           folderID == folder.id,
+           isExpanded,
+           !folder.isVault || isVaultUnlocked {
+            return true
+        }
+        return false
     }
 }
 
 // MARK: - Snippet Item Row
-struct SnippetItemRow: View {
+private struct SnippetItemRow: View {
     let snippet: SnippetsEditorViewModel.SnippetItem
+    let folderID: String
+    let snippetIndex: Int
     let isSelected: Bool
+    let reorderEnabled: Bool
+    let dropIndicator: SnippetDropIndicator?
+    let dragProvider: (SnippetDragPayload) -> NSItemProvider
+    let dropActions: SnippetDropActions
     let onSelect: () -> Void
     let onDelete: () -> Void
     let onToggle: () -> Void
@@ -884,16 +1889,32 @@ struct SnippetItemRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Spacer().frame(width: 14)
+            Spacer().frame(width: 8)
 
-            Image(systemName: snippet.enabled ? "doc.text.fill" : "doc.text")
+            SnippetDragHandle(reorderEnabled: reorderEnabled)
+
+            Image(systemName: snippet.isScript ? "terminal.fill" : snippet.enabled ? "doc.text.fill" : "doc.text")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : snippet.enabled ? AnyShapeStyle(.blue) : AnyShapeStyle(.quaternary))
+                .foregroundStyle(
+                    isSelected
+                        ? AnyShapeStyle(.white)
+                        : !snippet.enabled
+                            ? AnyShapeStyle(.quaternary)
+                            : snippet.isScript
+                            ? AnyShapeStyle(SwiftUI.Color.green)
+                            : AnyShapeStyle(.blue)
+                )
                 .frame(width: 22, height: 22)
                 .background(
                     isSelected
                         ? AnyShapeStyle(.white.opacity(0.15))
-                        : AnyShapeStyle(snippet.enabled ? SwiftUI.Color.blue.opacity(0.08) : SwiftUI.Color.clear)
+                        : AnyShapeStyle(
+                            !snippet.enabled
+                                ? SwiftUI.Color.clear
+                                : snippet.isScript
+                                ? SwiftUI.Color.green.opacity(0.08)
+                                : SwiftUI.Color.blue.opacity(0.08)
+                        )
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
 
@@ -934,15 +1955,31 @@ struct SnippetItemRow: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .contentShape(Rectangle())
+        .snippetInsertionIndicator(snippetIndicatorEdge, leadingPadding: 26)
         .onTapGesture { onSelect() }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) { isHovered = hovering }
         }
+        .snippetReorderDrag(enabled: reorderEnabled) {
+            dragProvider(.snippet(snippet.id))
+        }
+        .snippetReorderDrop(
+            enabled: reorderEnabled,
+            target: .snippet(folderID: folderID, snippetIndex: snippetIndex),
+            actions: dropActions
+        )
         .contextMenu {
             Button(snippet.enabled ? "Disable" : "Enable") { onToggle() }
             Divider()
             Button("Delete", role: .destructive) { onDelete() }
         }
+    }
+
+    private var snippetIndicatorEdge: SnippetDropIndicatorEdge? {
+        if case let .snippet(snippetID, edge) = dropIndicator, snippetID == snippet.id {
+            return edge
+        }
+        return nil
     }
 }
 
@@ -989,7 +2026,7 @@ class ModernSnippetsWindowController: NSWindowController {
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = true

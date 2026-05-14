@@ -39,6 +39,7 @@ struct Constants {
         static let aboutCopyright = "Original work © 2015-2018 Clipy Project and Naotaka Morimoto.\nCurrent fork maintenance © 2026 \(maintainerName)."
         static let repositoryURL = URL(string: "https://github.com/\(githubRepositorySlug)")!
         static let appcastURL = URL(string: "https://\(githubOwner).github.io/\(githubRepository)/appcast.xml")!
+        static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/\(githubRepositorySlug)/releases/latest")!
         static let releasesURL = URL(string: "https://github.com/\(githubRepositorySlug)/releases")!
         static let issuesURL = URL(string: "https://github.com/\(githubRepositorySlug)/issues")!
         static let discussionsURL = URL(string: "https://github.com/\(githubRepositorySlug)/discussions")!
@@ -92,6 +93,7 @@ struct Constants {
         static let collectCrashReport = "kCPYCollectCrashReport"
         static let showColorPreviewInTheMenu = "kCPYPrefShowColorPreviewInTheMenu"
         static let clearHistoryIncludesPinned = "kCPYPrefClearHistoryIncludesPinned"
+        static let ephemeralAutoClearSeconds = "kCPYPrefEphemeralAutoClearSeconds"
     }
 
     struct Beta {
@@ -123,6 +125,10 @@ struct Constants {
         static let titleElement = "title"
         static let snippetsElement = "snippets"
         static let contentElement = "content"
+        static let snippetTypeElement = "snippetType"
+        static let scriptShellElement = "scriptShell"
+        static let scriptTimeoutElement = "scriptTimeout"
+        static let isEphemeralElement = "isEphemeral"
     }
 
     struct HotKey {
