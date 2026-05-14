@@ -104,9 +104,9 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 - [x] Ensure state does not leak between selected snippets.
 - [x] Preserve current drag reorder, insertion indicators, vault behavior, and close button.
 - [x] Keep current editor layout and visual style.
-- [ ] Ensure XML import/export preserves script fields.
-- [ ] Put new XML element names in `Constants.Xml`.
-- [ ] Extract shared XML read/write helpers for script fields to avoid duplicate modern/legacy code.
+- [x] Ensure XML import/export preserves script fields.
+- [x] Put new XML element names in `Constants.Xml`.
+- [x] Extract shared XML read/write helpers for script fields to avoid duplicate modern/legacy code.
 
 ### Phase 6: Template Gallery
 

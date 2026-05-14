@@ -9,7 +9,6 @@
 
 import SwiftUI
 import RealmSwift
-import AEXML
 import UniformTypeIdentifiers
 import LocalAuthentication
 import TipKit
@@ -442,27 +441,10 @@ class SnippetsEditorViewModel: ObservableObject {
     // MARK: - Import / Export
 
     func exportSnippets() {
-        let xmlDocument = AEXMLDocument()
-        let rootElement = xmlDocument.addChild(name: Constants.Xml.rootElement)
-
         guard let realm = Realm.safeInstance() else { return }
         let realmFolders = realm.objects(CPYFolder.self)
             .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true)
-
-        realmFolders.forEach { folder in
-            // Skip vault folders — protected content should not be exported
-            if folder.isVault { return }
-            let folderElement = rootElement.addChild(name: Constants.Xml.folderElement)
-            folderElement.addChild(name: Constants.Xml.titleElement, value: folder.title)
-            let snippetsElement = folderElement.addChild(name: Constants.Xml.snippetsElement)
-            folder.snippets
-                .sorted(byKeyPath: #keyPath(CPYSnippet.index), ascending: true)
-                .forEach { snippet in
-                    let snippetElement = snippetsElement.addChild(name: Constants.Xml.snippetElement)
-                    snippetElement.addChild(name: Constants.Xml.titleElement, value: snippet.title)
-                    snippetElement.addChild(name: Constants.Xml.contentElement, value: snippet.content)
-                }
-        }
+        let xmlDocument = SnippetXMLCoder.xmlDocument(from: realmFolders, includeVaultFolders: false)
 
         let panel = NSSavePanel()
         panel.canSelectHiddenExtension = true
@@ -493,32 +475,11 @@ class SnippetsEditorViewModel: ObservableObject {
             guard let realm = Realm.safeInstance() else { return }
             let lastFolder = realm.objects(CPYFolder.self)
                 .sorted(byKeyPath: #keyPath(CPYFolder.index), ascending: true).last
-            var folderIndex = (lastFolder?.index ?? -1) + 1
-
-            var options = AEXMLOptions()
-            options.parserSettings.shouldTrimWhitespace = false
-            let xmlDocument = try AEXMLDocument(xml: data, options: options)
+            let folderIndex = (lastFolder?.index ?? -1) + 1
+            let importedFolders = try SnippetXMLCoder.importFolders(from: data, startingAt: folderIndex)
 
             realm.transaction {
-                xmlDocument[Constants.Xml.rootElement].children.forEach { folderElement in
-                    let folder = CPYFolder()
-                    folder.title = folderElement[Constants.Xml.titleElement].value ?? "untitled folder"
-                    folder.index = folderIndex
-                    realm.add(folder)
-
-                    var snippetIndex = 0
-                    folderElement[Constants.Xml.snippetsElement][Constants.Xml.snippetElement]
-                        .all?
-                        .forEach { snippetElement in
-                            let snippet = CPYSnippet()
-                            snippet.title = snippetElement[Constants.Xml.titleElement].value ?? "untitled snippet"
-                            snippet.content = snippetElement[Constants.Xml.contentElement].value ?? ""
-                            snippet.index = snippetIndex
-                            folder.snippets.append(snippet)
-                            snippetIndex += 1
-                        }
-                    folderIndex += 1
-                }
+                importedFolders.forEach { realm.add($0) }
             }
             load()
         } catch {

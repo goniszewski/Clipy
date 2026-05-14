@@ -22,6 +22,7 @@
 		CB05E7E6FB15E9FF00556699 /* UsageMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB05E7E5FB15E9FF00556699 /* UsageMetricsService.swift */; };
 		CB06A101FB260001006677AA /* ScriptExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A100FB260001006677AA /* ScriptExecutionService.swift */; };
 		CB06A103FB260001006677AA /* SnippetExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A102FB260001006677AA /* SnippetExecutionService.swift */; };
+		CB06A105FB260002006677AA /* SnippetXMLCoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A104FB260002006677AA /* SnippetXMLCoder.swift */; };
 		EDE7A42E04B3D58A61FD0FD2 /* ModernSnippetsEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802DE837E59DA8EA94C6B53A /* ModernSnippetsEditor.swift */; };
 		FA08EDF81D1FED7D000D1D13 /* HotKeyServiceSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA08EDF71D1FED7D000D1D13 /* HotKeyServiceSpec.swift */; };
 		FA0D5CE81DDCC61600AC9052 /* ClipService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0D5CE71DDCC61600AC9052 /* ClipService.swift */; };
@@ -77,6 +78,7 @@
 		FA3778931F3B691A003B5BAB /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3778921F3B691A003B5BAB /* AppEnvironment.swift */; };
 		FA3778951F3B6920003B5BAB /* Environment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3778941F3B6920003B5BAB /* Environment.swift */; };
 		FA431F021E6718CE00ACFF56 /* Collection+Safe.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA431F011E6718CE00ACFF56 /* Collection+Safe.swift */; };
+		CB06A107FB260003006677AA /* SnippetXMLCoderSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB06A106FB260003006677AA /* SnippetXMLCoderSpec.swift */; };
 		FA6167921D3ABEB10049FA14 /* FolderSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6167911D3ABEB10049FA14 /* FolderSpec.swift */; };
 		FA6167941D3ACCB90049FA14 /* DraggedDataSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6167931D3ACCB90049FA14 /* DraggedDataSpec.swift */; };
 		FA6167961D3ACDD80049FA14 /* SnippetSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6167951D3ACDD80049FA14 /* SnippetSpec.swift */; };
@@ -177,6 +179,7 @@
 		CB05E7E5FB15E9FF00556699 /* UsageMetricsService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UsageMetricsService.swift; sourceTree = "<group>"; };
 		CB06A100FB260001006677AA /* ScriptExecutionService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ScriptExecutionService.swift; sourceTree = "<group>"; };
 		CB06A102FB260001006677AA /* SnippetExecutionService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetExecutionService.swift; sourceTree = "<group>"; };
+		CB06A104FB260002006677AA /* SnippetXMLCoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetXMLCoder.swift; sourceTree = "<group>"; };
 		FA08EDF71D1FED7D000D1D13 /* HotKeyServiceSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HotKeyServiceSpec.swift; sourceTree = "<group>"; };
 		FA0D5CE71DDCC61600AC9052 /* ClipService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ClipService.swift; sourceTree = "<group>"; };
 		FA10897B20EC22E200A3FEFC /* AssetsImages.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AssetsImages.swift; sourceTree = "<group>"; };
@@ -225,6 +228,7 @@
 		FA3778921F3B691A003B5BAB /* AppEnvironment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		FA3778941F3B6920003B5BAB /* Environment.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Environment.swift; sourceTree = "<group>"; };
 		FA431F011E6718CE00ACFF56 /* Collection+Safe.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Collection+Safe.swift"; sourceTree = "<group>"; };
+		CB06A106FB260003006677AA /* SnippetXMLCoderSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetXMLCoderSpec.swift; sourceTree = "<group>"; };
 		FA6167911D3ABEB10049FA14 /* FolderSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FolderSpec.swift; sourceTree = "<group>"; };
 		FA6167931D3ACCB90049FA14 /* DraggedDataSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DraggedDataSpec.swift; sourceTree = "<group>"; };
 		FA6167951D3ACDD80049FA14 /* SnippetSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SnippetSpec.swift; sourceTree = "<group>"; };
@@ -550,6 +554,7 @@
 			children = (
 				FA1DB50D1DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.swift */,
 				802DE837E59DA8EA94C6B53A /* ModernSnippetsEditor.swift */,
+				CB06A104FB260002006677AA /* SnippetXMLCoder.swift */,
 				FA1DB50F1DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.xib */,
 			);
 			path = Snippets;
@@ -614,6 +619,7 @@
 				FA6167911D3ABEB10049FA14 /* FolderSpec.swift */,
 				FA6167971D3ACEE90049FA14 /* MenuListNumberingSpec.swift */,
 				FA6167951D3ACDD80049FA14 /* SnippetSpec.swift */,
+				CB06A106FB260003006677AA /* SnippetXMLCoderSpec.swift */,
 				FAC43DDC1B35D8B100C06102 /* Supporting Files */,
 			);
 			path = ClipyTests;
@@ -952,6 +958,7 @@
 				CB01A3F4E7D1A4B900112244 /* CollectModeIndicator.swift in Sources */,
 				CB06A101FB260001006677AA /* ScriptExecutionService.swift in Sources */,
 				CB06A103FB260001006677AA /* SnippetExecutionService.swift in Sources */,
+				CB06A105FB260002006677AA /* SnippetXMLCoder.swift in Sources */,
 				FA1DB4D71DDCB479007F95C8 /* CPYSnippet.swift in Sources */,
 				FA1DB5201DDCB4C0007F95C8 /* CPYSnippetsEditorWindowController.swift in Sources */,
 				EDE7A42E04B3D58A61FD0FD2 /* ModernSnippetsEditor.swift in Sources */,
@@ -977,6 +984,7 @@
 				FA08EDF81D1FED7D000D1D13 /* HotKeyServiceSpec.swift in Sources */,
 				FA6167981D3ACEE90049FA14 /* MenuListNumberingSpec.swift in Sources */,
 				FA6167961D3ACDD80049FA14 /* SnippetSpec.swift in Sources */,
+				CB06A107FB260003006677AA /* SnippetXMLCoderSpec.swift in Sources */,
 				FA6167941D3ACCB90049FA14 /* DraggedDataSpec.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
