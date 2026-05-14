@@ -7,6 +7,8 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.1] - 2026-05-14
+
 ### Added
 - Added script snippets with configurable shell, timeout, and ephemeral output settings
 - Added script snippet execution from the classic menu, modern snippet picker, and snippets editor test-run flow
