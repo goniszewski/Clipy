@@ -25,14 +25,20 @@ struct SnippetExecutionRequest: Equatable {
 
 enum SnippetExecutionOutcome: Equatable {
     case pasted(String, isEphemeral: Bool)
+    case copied(String, isEphemeral: Bool)
     case failed(String)
 }
 
 final class SnippetExecutionService {
+    private static let maximumAutomaticPasteLatency: TimeInterval = 1.0
+
     typealias ScriptRunner = (String, ScriptSnippetConfig, @escaping (ScriptExecutionResult) -> Void) -> Void
     typealias Paste = (String, Bool) -> Void
+    typealias Copy = (String, Bool) -> Void
     typealias ErrorPresenter = (String) -> Void
     typealias Scheduler = (TimeInterval, @escaping () -> Void) -> Void
+    typealias CurrentPasteTarget = () -> pid_t?
+    typealias CurrentDate = () -> Date
 
     static let shared = SnippetExecutionService(
         scriptRunner: { script, config, completion in
@@ -60,24 +66,46 @@ final class SnippetExecutionService {
                 return
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+        },
+        copy: { text, isEphemeral in
+            if isEphemeral {
+                AppEnvironment.current.pasteService.copyEphemeralToPasteboard(with: text)
+            } else {
+                AppEnvironment.current.pasteService.copyToPasteboard(with: text)
+            }
+        },
+        currentPasteTarget: {
+            NSWorkspace.shared.frontmostApplication?.processIdentifier
+        },
+        currentDate: {
+            Date()
         }
     )
 
     private let scriptRunner: ScriptRunner
     private let paste: Paste
+    private let copy: Copy
     private let presentError: ErrorPresenter
     private let scheduler: Scheduler
+    private let currentPasteTarget: CurrentPasteTarget
+    private let currentDate: CurrentDate
 
     init(
         scriptRunner: @escaping ScriptRunner,
         paste: @escaping Paste,
         presentError: @escaping ErrorPresenter,
-        scheduler: @escaping Scheduler
+        scheduler: @escaping Scheduler,
+        copy: @escaping Copy = { _, _ in },
+        currentPasteTarget: @escaping CurrentPasteTarget = { nil },
+        currentDate: @escaping CurrentDate = { Date() }
     ) {
         self.scriptRunner = scriptRunner
         self.paste = paste
+        self.copy = copy
         self.presentError = presentError
         self.scheduler = scheduler
+        self.currentPasteTarget = currentPasteTarget
+        self.currentDate = currentDate
     }
 
     func execute(
@@ -93,11 +121,20 @@ final class SnippetExecutionService {
         pasteDelay: TimeInterval = 0,
         completion: ((SnippetExecutionOutcome) -> Void)? = nil
     ) {
+        let expectedPasteTarget = currentPasteTarget()
+        let startedAt = currentDate()
+
         switch request.type {
         case .plainText:
             let processed = SnippetVariableProcessor.process(request.content)
-            schedulePaste(processed, isEphemeral: false, pasteDelay: pasteDelay)
-            completion?(.pasted(processed, isEphemeral: false))
+            schedulePaste(
+                processed,
+                isEphemeral: false,
+                pasteDelay: pasteDelay,
+                expectedPasteTarget: expectedPasteTarget,
+                startedAt: startedAt,
+                completion: completion
+            )
 
         case .script:
             scriptRunner(request.content, request.scriptConfig) { [weak self] result in
@@ -108,8 +145,14 @@ final class SnippetExecutionService {
                     return
                 }
 
-                self.schedulePaste(result.output, isEphemeral: request.scriptConfig.isEphemeral, pasteDelay: pasteDelay)
-                completion?(.pasted(result.output, isEphemeral: request.scriptConfig.isEphemeral))
+                self.schedulePaste(
+                    result.output,
+                    isEphemeral: request.scriptConfig.isEphemeral,
+                    pasteDelay: pasteDelay,
+                    expectedPasteTarget: expectedPasteTarget,
+                    startedAt: startedAt,
+                    completion: completion
+                )
             }
         }
     }
@@ -128,9 +171,24 @@ final class SnippetExecutionService {
         }
     }
 
-    private func schedulePaste(_ text: String, isEphemeral: Bool, pasteDelay: TimeInterval) {
-        scheduler(pasteDelay) { [paste] in
+    private func schedulePaste(
+        _ text: String,
+        isEphemeral: Bool,
+        pasteDelay: TimeInterval,
+        expectedPasteTarget: pid_t?,
+        startedAt: Date,
+        completion: ((SnippetExecutionOutcome) -> Void)?
+    ) {
+        scheduler(pasteDelay) { [copy, currentDate, currentPasteTarget, paste] in
+            let elapsed = currentDate().timeIntervalSince(startedAt)
+            let pasteTargetChanged = expectedPasteTarget.map { currentPasteTarget() != $0 } ?? false
+            if pasteTargetChanged || elapsed > Self.maximumAutomaticPasteLatency {
+                copy(text, isEphemeral)
+                completion?(.copied(text, isEphemeral: isEphemeral))
+                return
+            }
             paste(text, isEphemeral)
+            completion?(.pasted(text, isEphemeral: isEphemeral))
         }
     }
 
@@ -140,6 +198,12 @@ final class SnippetExecutionService {
         }
         if let launchError = result.launchError {
             return "Script could not be launched: \(launchError)"
+        }
+        if result.outputTruncated {
+            return "Script output exceeded \(ScriptExecutionService.maxOutputSize) bytes and was not pasted."
+        }
+        if result.stderrTruncated {
+            return "Script error output exceeded \(ScriptExecutionService.maxOutputSize) bytes."
         }
         if result.exitCode != 0 {
             let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)

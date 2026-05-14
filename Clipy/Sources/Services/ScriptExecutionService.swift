@@ -41,18 +41,31 @@ struct ScriptExecutionResult: Equatable {
     let exitCode: Int32
     let timedOut: Bool
     let launchError: String?
+    let outputTruncated: Bool
+    let stderrTruncated: Bool
 
-    init(output: String, stderr: String, exitCode: Int32, timedOut: Bool, launchError: String? = nil) {
+    init(
+        output: String,
+        stderr: String,
+        exitCode: Int32,
+        timedOut: Bool,
+        launchError: String? = nil,
+        outputTruncated: Bool = false,
+        stderrTruncated: Bool = false
+    ) {
         self.output = output
         self.stderr = stderr
         self.exitCode = exitCode
         self.timedOut = timedOut
         self.launchError = launchError
+        self.outputTruncated = outputTruncated
+        self.stderrTruncated = stderrTruncated
     }
 }
 
 struct ScriptExecutionService {
     static let maxOutputSize = 1_048_576
+    static let maxClipboardEnvironmentBytes = 64 * 1024
     private static let terminationGracePeriod: TimeInterval = 0.5
 
     static func execute(
@@ -71,24 +84,23 @@ struct ScriptExecutionService {
     }
 
     private static func run(script: String, config: ScriptSnippetConfig, clipboard: String?) -> ScriptExecutionResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: config.shell)
-        process.arguments = ["-c", script]
-        process.currentDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
-        process.environment = environment(clipboard: clipboard)
+        if let environmentError = environmentError(script: script, clipboard: clipboard) {
+            return ScriptExecutionResult(output: "", stderr: "", exitCode: -1, timedOut: false, launchError: environmentError)
+        }
 
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
+        let subprocess = ScriptSubprocess(
+            shell: config.shell,
+            script: script,
+            currentDirectory: NSTemporaryDirectory(),
+            environment: environment(script: script, clipboard: clipboard)
+        )
 
-        let stdoutReader = NonBlockingPipeReader(handle: stdoutPipe.fileHandleForReading, limit: maxOutputSize)
-        let stderrReader = NonBlockingPipeReader(handle: stderrPipe.fileHandleForReading, limit: maxOutputSize)
+        let stdoutReader = NonBlockingPipeReader(handle: subprocess.stdoutReadHandle, limit: maxOutputSize)
+        let stderrReader = NonBlockingPipeReader(handle: subprocess.stderrReadHandle, limit: maxOutputSize)
 
         do {
-            try process.run()
-            stdoutPipe.fileHandleForWriting.closeFile()
-            stderrPipe.fileHandleForWriting.closeFile()
+            try subprocess.run()
+            subprocess.closeWriteHandles()
         } catch {
             scriptLogger.error("Failed to launch script: \(error.localizedDescription)")
             return ScriptExecutionResult(output: "", stderr: "", exitCode: -1, timedOut: false, launchError: error.localizedDescription)
@@ -99,47 +111,65 @@ struct ScriptExecutionService {
         let timeoutDeadline = Date().addingTimeInterval(config.timeout)
         let readers = [stdoutReader, stderrReader]
 
-        while process.isRunning {
+        while true {
             readers.forEach { $0.drainAvailable() }
 
             let now = Date()
-            if now >= timeoutDeadline && !timedOut {
-                timedOut = true
-                process.terminate()
-                killDeadline = now.addingTimeInterval(terminationGracePeriod)
-            }
-
-            if let killDeadline, now >= killDeadline, process.isRunning {
-                _ = kill(process.processIdentifier, SIGKILL)
+            if !timedOut {
+                if subprocess.hasExited {
+                    break
+                }
+                if now >= timeoutDeadline {
+                    timedOut = true
+                    subprocess.signalProcessGroup(SIGTERM)
+                    killDeadline = now.addingTimeInterval(terminationGracePeriod)
+                }
+            } else if let killDeadline, now >= killDeadline {
+                // Keep the shell unreaped until after the final group signal so its pid
+                // cannot be reused as a different process group before SIGKILL.
+                subprocess.signalProcessGroup(SIGKILL)
+                break
             }
 
             waitForPipeData(readers, timeoutMilliseconds: 25)
         }
 
-        process.waitUntilExit()
+        let exitCode = subprocess.waitUntilExit()
         readers.forEach { $0.drainAvailable() }
 
-        let output = String(data: stdoutReader.data, encoding: .utf8) ?? ""
-        let stderr = String(data: stderrReader.data, encoding: .utf8) ?? ""
+        let output = String(decoding: stdoutReader.data, as: UTF8.self)
+        let stderr = String(decoding: stderrReader.data, as: UTF8.self)
 
         return ScriptExecutionResult(
             output: output,
             stderr: stderr,
-            exitCode: process.terminationStatus,
-            timedOut: timedOut
+            exitCode: exitCode,
+            timedOut: timedOut,
+            outputTruncated: stdoutReader.isTruncated,
+            stderrTruncated: stderrReader.isTruncated
         )
     }
 
-    private static func environment(clipboard: String?) -> [String: String] {
+    static func environment(script: String, clipboard: String?) -> [String: String] {
         // Script snippets receive a minimal documented environment by default.
         var environment = [
             "HOME": NSHomeDirectory(),
             "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"
         ]
-        if let clipboard {
+        if let clipboard, scriptRequestsClipboard(script), environmentError(script: script, clipboard: clipboard) == nil {
             environment["CLIPBOARD"] = clipboard
         }
         return environment
+    }
+
+    static func environmentError(script: String, clipboard: String?) -> String? {
+        guard let clipboard, scriptRequestsClipboard(script) else { return nil }
+        guard clipboard.utf8.count > maxClipboardEnvironmentBytes else { return nil }
+        return "Current clipboard text is too large to expose as CLIPBOARD."
+    }
+
+    private static func scriptRequestsClipboard(_ script: String) -> Bool {
+        script.contains("CLIPBOARD")
     }
 
     private static func waitForPipeData(_ readers: [NonBlockingPipeReader], timeoutMilliseconds: Int32) {
@@ -154,6 +184,7 @@ private final class NonBlockingPipeReader {
     private let limit: Int
     private var collected = Data()
     private var stored = 0
+    private(set) var isTruncated = false
 
     let fileDescriptor: Int32
 
@@ -184,6 +215,11 @@ private final class NonBlockingPipeReader {
                     let appendCount = min(Int(bytesRead), limit - stored)
                     collected.append(contentsOf: buffer.prefix(appendCount))
                     stored += appendCount
+                    if appendCount < bytesRead {
+                        isTruncated = true
+                    }
+                } else {
+                    isTruncated = true
                 }
                 continue
             }
@@ -193,5 +229,150 @@ private final class NonBlockingPipeReader {
             }
             break
         }
+    }
+}
+
+private final class ScriptSubprocess {
+    let stdoutReadHandle: FileHandle
+    let stderrReadHandle: FileHandle
+
+    private let shell: String
+    private let script: String
+    private let currentDirectory: String
+    private let environment: [String: String]
+    private let stdoutPipe = Pipe()
+    private let stderrPipe = Pipe()
+    private var pid: pid_t = 0
+    private var waitStatus: Int32?
+
+    init(shell: String, script: String, currentDirectory: String, environment: [String: String]) {
+        self.shell = shell
+        self.script = script
+        self.currentDirectory = currentDirectory
+        self.environment = environment
+        self.stdoutReadHandle = stdoutPipe.fileHandleForReading
+        self.stderrReadHandle = stderrPipe.fileHandleForReading
+    }
+
+    func run() throws {
+        var actions: posix_spawn_file_actions_t?
+        try check(posix_spawn_file_actions_init(&actions))
+        defer { posix_spawn_file_actions_destroy(&actions) }
+
+        try check(posix_spawn_file_actions_adddup2(&actions, stdoutPipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO))
+        try check(posix_spawn_file_actions_adddup2(&actions, stderrPipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO))
+        try currentDirectory.withCString { path in
+            try check(posix_spawn_file_actions_addchdir_np(&actions, path))
+        }
+
+        var attributes: posix_spawnattr_t?
+        try check(posix_spawnattr_init(&attributes))
+        defer { posix_spawnattr_destroy(&attributes) }
+
+        let flags = Int16(POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT)
+        try check(posix_spawnattr_setflags(&attributes, flags))
+
+        let arguments = [shell, "-c", script]
+        let environmentPairs = environment
+            .map { "\($0.key)=\($0.value)" }
+            .sorted()
+
+        try withCStringArray(arguments) { argv in
+            try withCStringArray(environmentPairs) { envp in
+                let result = shell.withCString { shellPath in
+                    posix_spawn(&pid, shellPath, &actions, &attributes, argv, envp)
+                }
+                try check(result)
+            }
+        }
+    }
+
+    func closeWriteHandles() {
+        stdoutPipe.fileHandleForWriting.closeFile()
+        stderrPipe.fileHandleForWriting.closeFile()
+    }
+
+    var hasExited: Bool {
+        if waitStatus != nil { return true }
+
+        while true {
+            var status: Int32 = 0
+            let result = waitpid(pid, &status, WNOHANG)
+            if result == pid {
+                waitStatus = status
+                return true
+            }
+            if result == 0 {
+                return false
+            }
+            if result == -1 && errno == EINTR {
+                continue
+            }
+            return false
+        }
+    }
+
+    func signalProcessGroup(_ signal: Int32) {
+        guard pid > 0 else { return }
+        _ = kill(-pid, signal)
+    }
+
+    func waitUntilExit() -> Int32 {
+        if let waitStatus {
+            return Self.terminationStatus(from: waitStatus)
+        }
+
+        while true {
+            var status: Int32 = 0
+            let result = waitpid(pid, &status, 0)
+            if result == pid {
+                waitStatus = status
+                return Self.terminationStatus(from: status)
+            }
+            if result == -1 && errno == EINTR {
+                continue
+            }
+            return -1
+        }
+    }
+
+    private func check(_ result: Int32) throws {
+        guard result == 0 else { throw SpawnError(code: result) }
+    }
+
+    private func withCStringArray<Result>(
+        _ strings: [String],
+        _ body: (UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) throws -> Result
+    ) throws -> Result {
+        let cStrings = try strings.map { string -> UnsafeMutablePointer<CChar> in
+            guard let cString = strdup(string) else { throw SpawnError(code: ENOMEM) }
+            return cString
+        }
+        defer { cStrings.forEach { free($0) } }
+
+        var pointers = cStrings.map { Optional($0) }
+        pointers.append(nil)
+        return try pointers.withUnsafeMutableBufferPointer { buffer in
+            try body(buffer.baseAddress!)
+        }
+    }
+
+    private static func terminationStatus(from status: Int32) -> Int32 {
+        let statusCode = status & 0x7f
+        if statusCode == 0 {
+            return (status >> 8) & 0xff
+        }
+        if statusCode != 0x7f {
+            return statusCode
+        }
+        return status
+    }
+}
+
+private struct SpawnError: LocalizedError {
+    let code: Int32
+
+    var errorDescription: String? {
+        String(cString: strerror(code))
     }
 }

@@ -275,9 +275,12 @@ class SnippetPickerViewModel: ObservableObject {
     func pasteSnippet(withID id: String) {
         for folder in allFolders {
             if let snippet = folder.snippets.first(where: { $0.id == id }) {
-                UsageMetricsService.shared.track(.snippetPasted)
                 SnippetPickerWindowController.shared.dismiss()
-                SnippetExecutionService.shared.execute(snippet.executionRequest, pasteDelay: 0.1)
+                SnippetExecutionService.shared.execute(snippet.executionRequest, pasteDelay: 0.1) { outcome in
+                    if case .pasted = outcome {
+                        UsageMetricsService.shared.track(.snippetPasted)
+                    }
+                }
                 return
             }
         }

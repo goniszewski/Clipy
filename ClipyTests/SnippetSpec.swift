@@ -165,6 +165,65 @@ class SnippetSpec: QuickSpec {
                 expect(outcome) == .failed(errors.first ?? "")
             }
 
+            it("copies script output instead of pasting when the paste target changes") {
+                let snippet = CPYSnippet()
+                snippet.type = .script
+                snippet.content = "printf delayed"
+
+                var target: pid_t? = 100
+                var pasted: [(String, Bool)] = []
+                var copied: [(String, Bool)] = []
+                let service = SnippetExecutionService(
+                    scriptRunner: { _, _, completion in
+                        target = 200
+                        completion(ScriptExecutionResult(output: "delayed", stderr: "", exitCode: 0, timedOut: false))
+                    },
+                    paste: { pasted.append(($0, $1)) },
+                    presentError: { _ in },
+                    scheduler: { _, action in action() },
+                    copy: { copied.append(($0, $1)) },
+                    currentPasteTarget: { target }
+                )
+
+                var outcome: SnippetExecutionOutcome?
+                service.execute(snippet) { outcome = $0 }
+
+                expect(pasted).to(beEmpty())
+                expect(copied.count) == 1
+                expect(copied.first?.0) == "delayed"
+                expect(outcome) == .copied("delayed", isEphemeral: true)
+            }
+
+            it("copies delayed script output even when the same application remains focused") {
+                let snippet = CPYSnippet()
+                snippet.type = .script
+                snippet.content = "printf delayed"
+
+                var now = Date()
+                var pasted: [(String, Bool)] = []
+                var copied: [(String, Bool)] = []
+                let service = SnippetExecutionService(
+                    scriptRunner: { _, _, completion in
+                        now = now.addingTimeInterval(2)
+                        completion(ScriptExecutionResult(output: "delayed", stderr: "", exitCode: 0, timedOut: false))
+                    },
+                    paste: { pasted.append(($0, $1)) },
+                    presentError: { _ in },
+                    scheduler: { _, action in action() },
+                    copy: { copied.append(($0, $1)) },
+                    currentPasteTarget: { 100 },
+                    currentDate: { now }
+                )
+
+                var outcome: SnippetExecutionOutcome?
+                service.execute(snippet) { outcome = $0 }
+
+                expect(pasted).to(beEmpty())
+                expect(copied.count) == 1
+                expect(copied.first?.0) == "delayed"
+                expect(outcome) == .copied("delayed", isEphemeral: true)
+            }
+
             it("runs script tests through the shared runner without pasting or presenting alerts") {
                 let request = SnippetExecutionRequest(
                     content: "printf test",
@@ -261,9 +320,72 @@ class SnippetSpec: QuickSpec {
                         expect(result.stderr).to(beEmpty())
                         expect(result.exitCode) == 0
                         expect(result.timedOut).to(beFalse())
+                        expect(result.outputTruncated).to(beTrue())
                         done()
                     }
                 }
+            }
+
+            it("decodes invalid UTF-8 output lossily instead of dropping all captured bytes") {
+                waitUntil(timeout: .seconds(3)) { done in
+                    ScriptExecutionService.execute(
+                        script: "printf '\\303('",
+                        config: ScriptSnippetConfig(shell: "/bin/sh", timeoutSeconds: 2, isEphemeral: true)
+                    ) { result in
+                        expect(result.output).to(contain("("))
+                        expect(result.output.unicodeScalars.contains { $0.value == 0xfffd }).to(beTrue())
+                        expect(result.exitCode) == 0
+                        done()
+                    }
+                }
+            }
+
+            it("rejects successful script output that exceeds the capture limit before pasting") {
+                let snippet = CPYSnippet()
+                snippet.type = .script
+                snippet.content = "large output"
+
+                var pasted: [(String, Bool)] = []
+                var errors = [String]()
+                let service = SnippetExecutionService(
+                    scriptRunner: { _, _, completion in
+                        completion(ScriptExecutionResult(
+                            output: "partial",
+                            stderr: "",
+                            exitCode: 0,
+                            timedOut: false,
+                            outputTruncated: true
+                        ))
+                    },
+                    paste: { pasted.append(($0, $1)) },
+                    presentError: { errors.append($0) },
+                    scheduler: { _, action in action() }
+                )
+
+                var outcome: SnippetExecutionOutcome?
+                service.execute(snippet) { outcome = $0 }
+
+                expect(pasted).to(beEmpty())
+                expect(errors.first).to(contain("output exceeded"))
+                expect(outcome) == .failed(errors.first ?? "")
+            }
+
+            it("omits oversized clipboard text from scripts that do not request it") {
+                let environment = ScriptExecutionService.environment(
+                    script: "printf ok",
+                    clipboard: String(repeating: "x", count: ScriptExecutionService.maxClipboardEnvironmentBytes + 1)
+                )
+
+                expect(environment["CLIPBOARD"]).to(beNil())
+            }
+
+            it("fails before launch when an oversized clipboard is requested") {
+                let environmentError = ScriptExecutionService.environmentError(
+                    script: "printf %s \"$CLIPBOARD\"",
+                    clipboard: String(repeating: "x", count: ScriptExecutionService.maxClipboardEnvironmentBytes + 1)
+                )
+
+                expect(environmentError).to(contain("too large"))
             }
 
             it("handles successful scripts with empty output") {
@@ -295,6 +417,36 @@ class SnippetSpec: QuickSpec {
                     }
                 }
             }
+
+            it("kills child processes in the script process group after a timeout") {
+                let markerURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                    .appendingPathComponent("clipy-script-child-\(UUID().uuidString)")
+                let script = "trap '' TERM; (trap '' TERM; while :; do sleep 0.1; done) & echo $! > '\(markerURL.path)'; wait"
+
+                waitUntil(timeout: .seconds(5)) { done in
+                    ScriptExecutionService.execute(
+                        script: script,
+                        config: ScriptSnippetConfig(shell: "/bin/sh", timeoutSeconds: 1, isEphemeral: true)
+                    ) { result in
+                        expect(result.timedOut).to(beTrue())
+
+                        let pid = String(data: (try? Data(contentsOf: markerURL)) ?? Data(), encoding: .utf8)
+                            .flatMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                        if let pid {
+                            var isRunning = Darwin.kill(pid, 0) == 0
+                            let deadline = Date().addingTimeInterval(0.8)
+                            while isRunning && Date() < deadline {
+                                Thread.sleep(forTimeInterval: 0.05)
+                                isRunning = Darwin.kill(pid, 0) == 0
+                            }
+                            expect(isRunning).to(beFalse())
+                            _ = Darwin.kill(pid, SIGKILL)
+                        }
+                        try? FileManager.default.removeItem(at: markerURL)
+                        done()
+                    }
+                }
+            }
         }
     }
 
@@ -308,6 +460,15 @@ class SnippetSpec: QuickSpec {
 
                 expect(service.shouldSkipCapture(forChangeCount: 11)).to(beFalse())
                 expect(service.shouldSkipCapture(forChangeCount: 12)).to(beTrue())
+                expect(service.shouldSkipCapture(forChangeCount: 12)).to(beFalse())
+            }
+
+            it("prunes stale skip tokens when a newer pasteboard change is observed") {
+                let service = ClipService()
+
+                service.skipCapture(forChangeCount: 12)
+
+                expect(service.shouldSkipCapture(forChangeCount: 13)).to(beFalse())
                 expect(service.shouldSkipCapture(forChangeCount: 12)).to(beFalse())
             }
 

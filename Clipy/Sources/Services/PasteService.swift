@@ -140,9 +140,24 @@ extension PasteService {
     }
 
     func pasteEphemeral(with string: String) {
-        let autoClearDelay = TimeInterval(AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.ephemeralAutoClearSeconds))
+        let coordinator = makeEphemeralPasteCoordinator { [weak self] in
+            self?.paste()
+        }
+        coordinator.paste(string, autoClearDelay: ephemeralAutoClearDelay)
+    }
+
+    func copyEphemeralToPasteboard(with string: String) {
+        let coordinator = makeEphemeralPasteCoordinator(paste: {})
+        coordinator.paste(string, autoClearDelay: ephemeralAutoClearDelay)
+    }
+
+    private var ephemeralAutoClearDelay: TimeInterval {
+        TimeInterval(AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.ephemeralAutoClearSeconds))
+    }
+
+    private func makeEphemeralPasteCoordinator(paste: @escaping EphemeralPasteCoordinator.PerformPaste) -> EphemeralPasteCoordinator {
         let clipService = AppEnvironment.current.clipService
-        let coordinator = EphemeralPasteCoordinator(
+        return EphemeralPasteCoordinator(
             copyString: { [weak self] string in
                 guard let self else { return NSPasteboard.general.changeCount }
                 return self.copyStringToPasteboard(string)
@@ -156,12 +171,11 @@ extension PasteService {
                 return NSPasteboard.general.changeCount
             },
             registerSkip: { clipService.skipCapture(forChangeCount: $0) },
-            paste: { [weak self] in self?.paste() },
+            paste: paste,
             scheduler: { delay, action in
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
             }
         )
-        coordinator.paste(string, autoClearDelay: autoClearDelay)
     }
 
     private func copyStringToPasteboard(_ string: String) -> Int {

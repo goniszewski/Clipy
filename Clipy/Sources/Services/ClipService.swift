@@ -18,6 +18,7 @@ import os.log
 private let logger = Logger(subsystem: "com.clipy-app.Clipy", category: "ClipService")
 
 final class ClipService {
+    private static let maxSkippedChangeCounts = 16
 
     // MARK: - Properties
     private var cachedChangeCount: Int = 0
@@ -128,13 +129,16 @@ final class ClipService {
 
     func skipCapture(forChangeCount changeCount: Int) {
         skipLock.lock()
+        pruneSkippedChangeCounts(currentChangeCount: changeCount)
         skippedChangeCounts.insert(changeCount)
+        pruneSkippedChangeCountsToLimit()
         skipLock.unlock()
     }
 
     func shouldSkipCapture(forChangeCount changeCount: Int) -> Bool {
         skipLock.lock()
         defer { skipLock.unlock() }
+        pruneSkippedChangeCounts(currentChangeCount: changeCount)
         return skippedChangeCounts.remove(changeCount) != nil
     }
 
@@ -149,6 +153,19 @@ final class ClipService {
         realm.transaction {
             managedClip.updateTime = nextUpdateTime
         }
+    }
+
+    private func pruneSkippedChangeCounts(currentChangeCount: Int) {
+        skippedChangeCounts = skippedChangeCounts.filter { $0 >= currentChangeCount }
+    }
+
+    private func pruneSkippedChangeCountsToLimit() {
+        let overflow = skippedChangeCounts.count - Self.maxSkippedChangeCounts
+        guard overflow > 0 else { return }
+        skippedChangeCounts
+            .sorted()
+            .prefix(overflow)
+            .forEach { skippedChangeCounts.remove($0) }
     }
 }
 
