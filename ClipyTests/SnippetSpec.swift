@@ -10,6 +10,16 @@ class SnippetSpec: QuickSpec {
             Realm.Configuration.defaultConfiguration.inMemoryIdentifier = NSUUID().uuidString
         }
 
+        describeSyncDatabase()
+        describeScriptSnippetMetadata()
+        describeSnippetExecutionService()
+        describeScriptExecutionService()
+        describeEphemeralPasteBehavior()
+    }
+}
+
+private extension SnippetSpec {
+    class func describeSyncDatabase() {
         describe("Sync database") {
 
             it("Merge snippet") {
@@ -50,9 +60,12 @@ class SnippetSpec: QuickSpec {
                 let realm = try! Realm()
                 realm.transaction { realm.deleteAll() }
             }
-
         }
+    }
+}
 
+private extension SnippetSpec {
+    class func describeScriptSnippetMetadata() {
         describe("Script snippet metadata") {
 
             it("defaults new snippets to plain text with bounded explicit script settings") {
@@ -78,7 +91,11 @@ class SnippetSpec: QuickSpec {
                 expect(config.isEphemeral).to(beFalse())
             }
         }
+    }
+}
 
+private extension SnippetSpec {
+    class func describeSnippetExecutionService() {
         describe("Snippet execution service") {
 
             it("pastes plain text snippets through the shared path") {
@@ -255,14 +272,11 @@ class SnippetSpec: QuickSpec {
                 expect(errors).to(beEmpty())
             }
         }
-
-        describeEphemeralPasteBehavior()
-
-        describeScriptExecutionService()
-
     }
+}
 
-    private class func describeScriptExecutionService() {
+private extension SnippetSpec {
+    class func describeScriptExecutionService() {
         describe("Script execution service") {
 
             it("captures stdout exactly up to the output cap") {
@@ -449,8 +463,10 @@ class SnippetSpec: QuickSpec {
             }
         }
     }
+}
 
-    private class func describeEphemeralPasteBehavior() {
+private extension SnippetSpec {
+    class func describeEphemeralPasteBehavior() {
         describe("Ephemeral paste behavior") {
 
             it("consumes only the registered pasteboard change count") {
