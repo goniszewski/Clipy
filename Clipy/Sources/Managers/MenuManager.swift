@@ -13,6 +13,53 @@ import Cocoa
 import RealmSwift
 import Combine
 
+enum MenuListNumbering {
+    static let maxKeyEquivalents = 10
+
+    static func nextDisplayNumber(after displayNumber: Int) -> Int {
+        displayNumber + 1
+    }
+
+    static func keyEquivalent(forDisplayNumber displayNumber: Int, firstIndex: Int) -> String? {
+        guard displayNumber >= firstIndex else { return nil }
+
+        let keyNumber: Int
+        if firstIndex == 1 && displayNumber == maxKeyEquivalents {
+            keyNumber = 0
+        } else {
+            keyNumber = displayNumber
+        }
+
+        guard (0..<maxKeyEquivalents).contains(keyNumber) else { return nil }
+        return "\(keyNumber)"
+    }
+}
+
+enum HistoryMenuPlacement: Equatable {
+    case inline
+    case submenu(groupIndex: Int, itemIndex: Int)
+}
+
+enum HistoryMenuLayout {
+    static func firstSubmenuIndex(existingItemCount: Int, inlineCapacity: Int, visibleClipCount: Int) -> Int? {
+        let inlineItemCount = max(0, inlineCapacity)
+        guard visibleClipCount > inlineItemCount else { return nil }
+        return existingItemCount + 1 + inlineItemCount
+    }
+
+    static func placement(forClipIndex clipIndex: Int, inlineCapacity: Int, itemsPerSubmenu: Int) -> HistoryMenuPlacement {
+        let inlineItemCount = max(0, inlineCapacity)
+        guard clipIndex >= inlineItemCount else { return .inline }
+
+        let safeItemsPerSubmenu = max(1, itemsPerSubmenu)
+        let submenuOffset = max(0, clipIndex - inlineItemCount)
+        return .submenu(
+            groupIndex: submenuOffset / safeItemsPerSubmenu,
+            itemIndex: submenuOffset % safeItemsPerSubmenu
+        )
+    }
+}
+
 final class MenuManager: NSObject {
 
     // MARK: - Properties
@@ -27,7 +74,7 @@ final class MenuManager: NSObject {
     fileprivate let snippetIcon = Asset.iconText.image
     // Other
     fileprivate let notificationCenter = NotificationCenter.default
-    fileprivate let kMaxKeyEquivalents = 10
+    fileprivate let kMaxKeyEquivalents = MenuListNumbering.maxKeyEquivalents
     fileprivate let shortenSymbol = "..."
     // Realm
     fileprivate var realm: Realm?
@@ -111,7 +158,7 @@ extension MenuManager {
                 let subMenuItem = makeSnippetMenuItem(snippet, listNumber: index)
                 folderMenu.addItem(subMenuItem)
                 index += 1
-        }
+            }
         presentMenu(folderMenu)
     }
 
@@ -142,9 +189,7 @@ extension MenuManager {
             return
         }
 
-        let processed = SnippetVariableProcessor.process(snippet.content)
-        AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
-        AppEnvironment.current.pasteService.paste()
+        SnippetExecutionService.shared.execute(snippet)
     }
 
     private func presentMenu(_ menu: NSMenu) {
@@ -508,12 +553,8 @@ private extension MenuManager {
         return subMenuItem
     }
 
-    func incrementListNumber(_ listNumber: NSInteger, max: NSInteger, start: NSInteger) -> NSInteger {
-        var listNumber = listNumber + 1
-        if listNumber == max && max == 10 && start == 1 {
-            listNumber = 0
-        }
-        return listNumber
+    func incrementListNumber(_ listNumber: NSInteger, max _: NSInteger, start _: NSInteger) -> NSInteger {
+        return MenuListNumbering.nextDisplayNumber(after: listNumber)
     }
 
     func trimTitle(_ title: String?) -> String {
@@ -539,8 +580,7 @@ private extension MenuManager {
     }
 
     func numericKeyEquivalent(forListNumber listNumber: Int) -> String? {
-        guard (0..<kMaxKeyEquivalents).contains(listNumber) else { return nil }
-        return "\(listNumber)"
+        return MenuListNumbering.keyEquivalent(forDisplayNumber: listNumber, firstIndex: firstIndexOfMenuItems())
     }
 
 }
@@ -549,9 +589,9 @@ private extension MenuManager {
 private extension MenuManager {
     func addHistoryItems(_ menu: NSMenu) {
         guard let realm = realm else { return }
-        let placeInLine = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInline)
-        let placeInsideFolder = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInsideFolder)
-        let maxHistory = AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.maxHistorySize)
+        let placeInLine = max(0, AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInline))
+        let placeInsideFolder = max(1, AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.numberOfItemsPlaceInsideFolder))
+        let maxHistory = max(1, AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.maxHistorySize))
 
         // History title
         let labelItem = NSMenuItem(title: L10n.history, action: nil)
@@ -565,8 +605,7 @@ private extension MenuManager {
         // History
         let firstIndex = firstIndexOfMenuItems()
         var listNumber = firstIndex
-        var subMenuCount = placeInLine
-        var subMenuIndex = 1 + placeInLine
+        var currentSubMenu: NSMenu?
         var parentListNumber = firstIndex
 
         let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
@@ -575,38 +614,38 @@ private extension MenuManager {
             SortDescriptor(keyPath: #keyPath(CPYClip.isPinned), ascending: false),
             SortDescriptor(keyPath: #keyPath(CPYClip.updateTime), ascending: ascending)
         ])
-        let currentSize = Int(clipResults.count)
+        let currentSize = min(maxHistory, Int(clipResults.count))
         var i = 0
+
         for clip in clipResults {
-            if placeInLine < 1 || placeInLine - 1 < i {
-                if i == subMenuCount {
-                    let subMenuItem = makeSubmenuItem(subMenuCount,
+            switch HistoryMenuLayout.placement(forClipIndex: i, inlineCapacity: placeInLine, itemsPerSubmenu: placeInsideFolder) {
+            case .inline:
+                let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
+                menu.addItem(menuItem)
+                listNumber = incrementListNumber(listNumber, max: placeInLine, start: firstIndex)
+
+            case let .submenu(groupIndex, itemIndex):
+                if itemIndex == 0 {
+                    let subMenuStart = placeInLine + groupIndex * placeInsideFolder
+                    let subMenuItem = makeSubmenuItem(subMenuStart,
                                                       start: firstIndex,
                                                       end: currentSize,
                                                       numberOfItems: placeInsideFolder,
                                                       listNumber: parentListNumber)
                     menu.addItem(subMenuItem)
+                    currentSubMenu = subMenuItem.submenu
                     listNumber = firstIndex
                     parentListNumber = incrementListNumber(parentListNumber, max: kMaxKeyEquivalents, start: firstIndex)
                 }
 
-                if let subMenu = menu.item(at: subMenuIndex)?.submenu {
+                if let subMenu = currentSubMenu {
                     let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
                     subMenu.addItem(menuItem)
                     listNumber = incrementListNumber(listNumber, max: placeInsideFolder, start: firstIndex)
                 }
-            } else {
-                let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
-                menu.addItem(menuItem)
-                listNumber = incrementListNumber(listNumber, max: placeInLine, start: firstIndex)
             }
 
             i += 1
-            if i == subMenuCount + placeInsideFolder {
-                subMenuCount += placeInsideFolder
-                subMenuIndex += 1
-            }
-
             if maxHistory <= i { break }
         }
     }
@@ -770,8 +809,17 @@ private extension MenuManager {
         }
         menuItem.target = self
         menuItem.representedObject = snippet.identifier
-        menuItem.toolTip = snippet.content
-        menuItem.image = (isShowIcon) ? snippetIcon : nil
+        if snippet.type == .script {
+            menuItem.toolTip = "[Script] \(snippet.content)"
+            if isShowIcon, let scriptIcon = NSImage(systemSymbolName: "terminal.fill", accessibilityDescription: "Script Snippet") {
+                scriptIcon.isTemplate = true
+                scriptIcon.size = NSSize(width: 12, height: 13)
+                menuItem.image = scriptIcon
+            }
+        } else {
+            menuItem.toolTip = snippet.content
+            menuItem.image = (isShowIcon) ? snippetIcon : nil
+        }
         applyMenuItemTitle(menuItem,
                            title: title,
                            listNumber: listNumber,

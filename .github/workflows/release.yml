@@ -38,6 +38,24 @@ jobs:
             echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify changelog entry
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          HEADING_PREFIX="## [$VERSION] - "
+
+          if ! awk -v prefix="$HEADING_PREFIX" '
+            index($0, prefix) == 1 {
+              date = substr($0, length(prefix) + 1)
+              if (date ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) {
+                found = 1
+              }
+            }
+            END { exit found ? 0 : 1 }
+          ' CHANGELOG.md; then
+            echo "::error title=Missing changelog entry::CHANGELOG.md must include a dated '## [$VERSION] - YYYY-MM-DD' section before releasing."
+            exit 1
+          fi
+
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -300,7 +318,7 @@ jobs:
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
@@ -313,7 +331,7 @@ jobs:
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below
@@ -327,7 +345,7 @@ jobs:
             cat > "$RELEASE_NOTES_PATH" <<EOF
           ## Clipy v${{ steps.version.outputs.VERSION }}
 
-          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.TAG }}/CHANGELOG.md) for details.
 
           ### Install
           1. Download \`Clipy-${{ steps.version.outputs.VERSION }}.dmg\` below

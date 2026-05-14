@@ -93,6 +93,7 @@ struct Constants {
         static let collectCrashReport = "kCPYCollectCrashReport"
         static let showColorPreviewInTheMenu = "kCPYPrefShowColorPreviewInTheMenu"
         static let clearHistoryIncludesPinned = "kCPYPrefClearHistoryIncludesPinned"
+        static let ephemeralAutoClearSeconds = "kCPYPrefEphemeralAutoClearSeconds"
     }
 
     struct Beta {
@@ -124,6 +125,10 @@ struct Constants {
         static let titleElement = "title"
         static let snippetsElement = "snippets"
         static let contentElement = "content"
+        static let snippetTypeElement = "snippetType"
+        static let scriptShellElement = "scriptShell"
+        static let scriptTimeoutElement = "scriptTimeout"
+        static let isEphemeralElement = "isEphemeral"
     }
 
     struct HotKey {

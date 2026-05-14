@@ -52,6 +52,51 @@ final class PasteService {
     }
 }
 
+final class EphemeralPasteCoordinator {
+    typealias CopyString = (String) -> Int
+    typealias CurrentChangeCount = () -> Int
+    typealias ClearContents = () -> Int
+    typealias RegisterSkip = (Int) -> Void
+    typealias PerformPaste = () -> Void
+    typealias Scheduler = (TimeInterval, @escaping () -> Void) -> Void
+
+    private let copyString: CopyString
+    private let currentChangeCount: CurrentChangeCount
+    private let clearContents: ClearContents
+    private let registerSkip: RegisterSkip
+    private let performPaste: PerformPaste
+    private let scheduler: Scheduler
+
+    init(
+        copyString: @escaping CopyString,
+        currentChangeCount: @escaping CurrentChangeCount,
+        clearContents: @escaping ClearContents,
+        registerSkip: @escaping RegisterSkip,
+        paste: @escaping PerformPaste,
+        scheduler: @escaping Scheduler
+    ) {
+        self.copyString = copyString
+        self.currentChangeCount = currentChangeCount
+        self.clearContents = clearContents
+        self.registerSkip = registerSkip
+        self.performPaste = paste
+        self.scheduler = scheduler
+    }
+
+    func paste(_ string: String, autoClearDelay: TimeInterval) {
+        let writtenChangeCount = copyString(string)
+        registerSkip(writtenChangeCount)
+        performPaste()
+
+        guard autoClearDelay > 0 else { return }
+        scheduler(autoClearDelay) { [currentChangeCount, clearContents, registerSkip] in
+            guard currentChangeCount() == writtenChangeCount else { return }
+            let clearChangeCount = clearContents()
+            registerSkip(clearChangeCount)
+        }
+    }
+}
+
 // MARK: - Copy
 extension PasteService {
     func paste(with clip: CPYClip) {
@@ -92,6 +137,57 @@ extension PasteService {
         let pasteboard = NSPasteboard.general
         pasteboard.declareTypes([.clipyString], owner: nil)
         pasteboard.setString(string, forType: .clipyString)
+    }
+
+    func pasteEphemeral(with string: String) {
+        let coordinator = makeEphemeralPasteCoordinator { [weak self] in
+            self?.paste()
+        }
+        coordinator.paste(string, autoClearDelay: ephemeralAutoClearDelay)
+    }
+
+    func copyEphemeralToPasteboard(with string: String) {
+        let coordinator = makeEphemeralPasteCoordinator(paste: {})
+        coordinator.paste(string, autoClearDelay: ephemeralAutoClearDelay)
+    }
+
+    private var ephemeralAutoClearDelay: TimeInterval {
+        TimeInterval(AppEnvironment.current.defaults.integer(forKey: Constants.UserDefaults.ephemeralAutoClearSeconds))
+    }
+
+    private func makeEphemeralPasteCoordinator(paste: @escaping EphemeralPasteCoordinator.PerformPaste) -> EphemeralPasteCoordinator {
+        let clipService = AppEnvironment.current.clipService
+        return EphemeralPasteCoordinator(
+            copyString: { [weak self] string in
+                guard let self else { return NSPasteboard.general.changeCount }
+                return self.copyStringToPasteboard(string)
+            },
+            currentChangeCount: { NSPasteboard.general.changeCount },
+            clearContents: { [weak self] in
+                if let self {
+                    return self.clearPasteboard()
+                }
+                NSPasteboard.general.clearContents()
+                return NSPasteboard.general.changeCount
+            },
+            registerSkip: { clipService.skipCapture(forChangeCount: $0) },
+            paste: paste,
+            scheduler: { delay, action in
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+            }
+        )
+    }
+
+    private func copyStringToPasteboard(_ string: String) -> Int {
+        copyToPasteboard(with: string)
+        return NSPasteboard.general.changeCount
+    }
+
+    private func clearPasteboard() -> Int {
+        lock.lock(); defer { lock.unlock() }
+
+        NSPasteboard.general.clearContents()
+        return NSPasteboard.general.changeCount
     }
 
     func copyToPasteboard(with clip: CPYClip) {

@@ -147,6 +147,9 @@ struct GeneralPreferencesView: View {
     @AppStorage(Constants.UserDefaults.reorderClipsAfterPasting)
     private var reorderAfterPasting = true
 
+    @AppStorage(Constants.UserDefaults.ephemeralAutoClearSeconds)
+    private var ephemeralAutoClearSeconds = 30
+
     @AppStorage(Constants.UserDefaults.showStatusItem)
     private var statusItemStyle = 1
 
@@ -185,6 +188,13 @@ struct GeneralPreferencesView: View {
                 Picker("Sort order", selection: $reorderAfterPasting) {
                     Text("Last Used").tag(true)
                     Text("Date Created").tag(false)
+                }
+
+                Picker("Auto-clear ephemeral paste", selection: $ephemeralAutoClearSeconds) {
+                    Text("Off").tag(0)
+                    Text("15 seconds").tag(15)
+                    Text("30 seconds").tag(30)
+                    Text("60 seconds").tag(60)
                 }
             } header: {
                 Label("Clipboard History", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")

@@ -459,9 +459,7 @@ class AppDelegate: NSObject, NSMenuItemValidation {
             NSSound.beep()
             return
         }
-        let processed = SnippetVariableProcessor.process(snippet.content)
-        AppEnvironment.current.pasteService.copyToPasteboard(with: processed)
-        AppEnvironment.current.pasteService.paste()
+        SnippetExecutionService.shared.execute(snippet)
     }
 
     func terminateApplication() {
