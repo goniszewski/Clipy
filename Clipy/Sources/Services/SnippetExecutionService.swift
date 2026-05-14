@@ -114,6 +114,20 @@ final class SnippetExecutionService {
         }
     }
 
+    func testRun(
+        _ request: SnippetExecutionRequest,
+        completion: @escaping (ScriptExecutionResult) -> Void
+    ) {
+        switch request.type {
+        case .plainText:
+            let processed = SnippetVariableProcessor.process(request.content)
+            completion(ScriptExecutionResult(output: processed, stderr: "", exitCode: 0, timedOut: false))
+
+        case .script:
+            scriptRunner(request.content, request.scriptConfig, completion)
+        }
+    }
+
     private func schedulePaste(_ text: String, isEphemeral: Bool, pasteDelay: TimeInterval) {
         scheduler(pasteDelay) { [paste] in
             paste(text, isEphemeral)

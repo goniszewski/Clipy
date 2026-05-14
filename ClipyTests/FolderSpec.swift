@@ -384,6 +384,170 @@ class SnippetsEditorViewModelSpec: AsyncSpec {
         }
 
         describe("Modern snippets editor selection state") {
+            it("loads script editing state when selecting a script snippet") {
+                await MainActor.run {
+                    let realm = try! Realm()
+                    let folder = CPYFolder()
+                    folder.title = "Folder"
+                    folder.index = 0
+                    let snippet = CPYSnippet()
+                    snippet.title = "Script"
+                    snippet.content = "printf test"
+                    snippet.type = .script
+                    snippet.scriptShell = "/bin/zsh"
+                    snippet.scriptTimeout = 7
+                    snippet.isEphemeral = false
+                    folder.snippets.append(snippet)
+                    realm.transaction { realm.add(folder) }
+
+                    let viewModel = SnippetsEditorViewModel()
+                    viewModel.load()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[0])
+
+                    expect(viewModel.editingSnippetType) == .script
+                    expect(viewModel.editingScriptShell) == "/bin/zsh"
+                    expect(viewModel.editingScriptTimeout) == 7
+                    expect(viewModel.editingIsEphemeral).to(beFalse())
+                }
+            }
+
+            it("saves edited script metadata with the selected snippet") {
+                await MainActor.run {
+                    let realm = try! Realm()
+                    let folder = CPYFolder()
+                    folder.title = "Folder"
+                    folder.index = 0
+                    let snippet = CPYSnippet()
+                    snippet.title = "Script"
+                    snippet.content = "printf test"
+                    folder.snippets.append(snippet)
+                    realm.transaction { realm.add(folder) }
+
+                    let viewModel = SnippetsEditorViewModel()
+                    viewModel.load()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[0])
+                    viewModel.editingSnippetType = .script
+                    viewModel.editingScriptShell = "/bin/zsh"
+                    viewModel.editingScriptTimeout = 8
+                    viewModel.editingIsEphemeral = false
+                    viewModel.saveCurrentSnippet()
+
+                    expect(snippet.type) == .script
+                    expect(snippet.scriptShell) == "/bin/zsh"
+                    expect(snippet.scriptTimeout) == 8
+                    expect(snippet.isEphemeral).to(beFalse())
+                }
+            }
+
+            it("clears script editing state when selecting a folder") {
+                await MainActor.run {
+                    let realm = try! Realm()
+                    let folder = CPYFolder()
+                    folder.title = "Folder"
+                    folder.index = 0
+                    let snippet = CPYSnippet()
+                    snippet.title = "Script"
+                    snippet.content = "printf test"
+                    snippet.type = .script
+                    snippet.scriptShell = "/bin/zsh"
+                    snippet.scriptTimeout = 7
+                    snippet.isEphemeral = false
+                    folder.snippets.append(snippet)
+                    realm.transaction { realm.add(folder) }
+
+                    let viewModel = SnippetsEditorViewModel()
+                    viewModel.load()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[0])
+                    viewModel.selectFolder(folder.identifier)
+
+                    expect(viewModel.selectedSnippetID).to(beNil())
+                    expect(viewModel.editingSnippetType) == .plainText
+                    expect(viewModel.editingScriptShell) == CPYSnippet.defaultScriptShell
+                    expect(viewModel.editingScriptTimeout) == CPYSnippet.defaultScriptTimeout
+                    expect(viewModel.editingIsEphemeral).to(beTrue())
+                    expect(viewModel.scriptTestResult).to(beNil())
+                }
+            }
+
+            it("routes script test runs through the shared execution path using current editor state") {
+                await MainActor.run {
+                    let realm = try! Realm()
+                    let folder = CPYFolder()
+                    folder.title = "Folder"
+                    folder.index = 0
+                    let snippet = CPYSnippet()
+                    snippet.title = "Script"
+                    snippet.content = "printf saved"
+                    snippet.type = .script
+                    folder.snippets.append(snippet)
+                    realm.transaction { realm.add(folder) }
+
+                    var receivedRequest: SnippetExecutionRequest?
+                    let viewModel = SnippetsEditorViewModel(scriptTestRunner: { request, completion in
+                        receivedRequest = request
+                        completion(ScriptExecutionResult(output: "preview", stderr: "stderr", exitCode: 3, timedOut: true))
+                    })
+                    viewModel.load()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[0])
+                    viewModel.editingContent = "printf edited"
+                    viewModel.editingScriptShell = "/bin/zsh"
+                    viewModel.editingScriptTimeout = 6
+                    viewModel.editingIsEphemeral = false
+
+                    viewModel.runScriptTest()
+
+                    expect(receivedRequest) == SnippetExecutionRequest(
+                        content: "printf edited",
+                        type: .script,
+                        scriptConfig: ScriptSnippetConfig(shell: "/bin/zsh", timeoutSeconds: 6, isEphemeral: false)
+                    )
+                    expect(viewModel.isRunningScriptTest).to(beFalse())
+                    expect(viewModel.scriptTestResult) == ScriptExecutionResult(
+                        output: "preview",
+                        stderr: "stderr",
+                        exitCode: 3,
+                        timedOut: true
+                    )
+                }
+            }
+
+            it("ignores stale script test results after selection changes") {
+                await MainActor.run {
+                    let realm = try! Realm()
+                    let folder = CPYFolder()
+                    folder.title = "Folder"
+                    folder.index = 0
+                    let first = CPYSnippet()
+                    first.title = "First"
+                    first.content = "sleep 1"
+                    first.type = .script
+                    let second = CPYSnippet()
+                    second.title = "Second"
+                    second.content = "printf second"
+                    second.type = .script
+                    second.index = 1
+                    folder.snippets.append(objectsIn: [first, second])
+                    realm.transaction { realm.add(folder) }
+
+                    var pendingCompletion: (@MainActor (ScriptExecutionResult) -> Void)?
+                    let viewModel = SnippetsEditorViewModel(scriptTestRunner: { _, completion in
+                        pendingCompletion = completion
+                    })
+                    viewModel.load()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[0])
+                    viewModel.runScriptTest()
+                    viewModel.selectSnippet(viewModel.folders[0].snippets[1])
+
+                    pendingCompletion?(
+                        ScriptExecutionResult(output: "first", stderr: "", exitCode: 0, timedOut: false)
+                    )
+
+                    expect(viewModel.selectedSnippetID) == second.identifier
+                    expect(viewModel.scriptTestResult).to(beNil())
+                    expect(viewModel.isRunningScriptTest).to(beFalse())
+                }
+            }
+
             it("keeps selected folder in sync when selecting a snippet from another folder") {
                 await MainActor.run {
                     let realm = try! Realm()

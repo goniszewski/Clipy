@@ -164,6 +164,37 @@ class SnippetSpec: QuickSpec {
                 expect(errors.first).to(contain("bad script"))
                 expect(outcome) == .failed(errors.first ?? "")
             }
+
+            it("runs script tests through the shared runner without pasting or presenting alerts") {
+                let request = SnippetExecutionRequest(
+                    content: "printf test",
+                    type: .script,
+                    scriptConfig: ScriptSnippetConfig(shell: "/bin/sh", timeoutSeconds: 4, isEphemeral: true)
+                )
+                var receivedScript: String?
+                var receivedConfig: ScriptSnippetConfig?
+                var pasted: [(String, Bool)] = []
+                var errors = [String]()
+                let service = SnippetExecutionService(
+                    scriptRunner: { script, config, completion in
+                        receivedScript = script
+                        receivedConfig = config
+                        completion(ScriptExecutionResult(output: "test", stderr: "note", exitCode: 0, timedOut: false))
+                    },
+                    paste: { pasted.append(($0, $1)) },
+                    presentError: { errors.append($0) },
+                    scheduler: { _, action in action() }
+                )
+
+                var result: ScriptExecutionResult?
+                service.testRun(request) { result = $0 }
+
+                expect(receivedScript) == "printf test"
+                expect(receivedConfig) == ScriptSnippetConfig(shell: "/bin/sh", timeoutSeconds: 4, isEphemeral: true)
+                expect(result) == ScriptExecutionResult(output: "test", stderr: "note", exitCode: 0, timedOut: false)
+                expect(pasted).to(beEmpty())
+                expect(errors).to(beEmpty())
+            }
         }
 
         describeEphemeralPasteBehavior()

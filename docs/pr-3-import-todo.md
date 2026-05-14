@@ -46,7 +46,7 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 - [x] Route script execution through the shared path from:
   - [x] Classic menu snippet selection.
   - [x] Modern snippet picker.
-  - [ ] Snippet editor test run.
+  - [x] Snippet editor test run.
 - [x] Avoid duplicating timeout/error/paste behavior between `AppDelegate` and snippet picker view models.
 - [x] Add script snippet icons/badges in menu and picker.
 - [x] Preserve existing plain text snippet variable expansion.
@@ -94,16 +94,16 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 
 ### Phase 5: Editor UI For Script Snippets
 
-- [ ] Add a text/script segmented control or equivalent UI in the current snippets editor.
-- [ ] Add shell selector.
-- [ ] Add timeout picker/input.
-- [ ] Add `Ephemeral output` toggle.
-- [ ] Add `Test Run` button.
-- [ ] Show test output, stderr, exit code, and timeout state clearly.
-- [ ] Reset all script editing state when no snippet is selected.
-- [ ] Ensure state does not leak between selected snippets.
-- [ ] Preserve current drag reorder, insertion indicators, vault behavior, and close button.
-- [ ] Keep current editor layout and visual style.
+- [x] Add a text/script segmented control or equivalent UI in the current snippets editor.
+- [x] Add shell selector.
+- [x] Add timeout picker/input.
+- [x] Add `Ephemeral output` toggle.
+- [x] Add `Test Run` button.
+- [x] Show test output, stderr, exit code, and timeout state clearly.
+- [x] Reset all script editing state when no snippet is selected.
+- [x] Ensure state does not leak between selected snippets.
+- [x] Preserve current drag reorder, insertion indicators, vault behavior, and close button.
+- [x] Keep current editor layout and visual style.
 - [ ] Ensure XML import/export preserves script fields.
 - [ ] Put new XML element names in `Constants.Xml`.
 - [ ] Extract shared XML read/write helpers for script fields to avoid duplicate modern/legacy code.
