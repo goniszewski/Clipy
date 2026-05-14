@@ -25,11 +25,11 @@
 2. Open the DMG and drag Clipy to Applications
 3. Launch Clipy — it appears in your menu bar
 
-> Current GitHub releases may be unsigned and unnotarized until Apple signing credentials are configured. If macOS blocks Clipy, use the Gatekeeper bypass steps below.
+> Current GitHub releases may be locally signed but unnotarized until Apple signing credentials are configured. If macOS blocks Clipy, use the Gatekeeper bypass steps below.
 
-### Gatekeeper Bypass for Unsigned Builds
+### Gatekeeper Bypass for Manual Builds
 
-If you're testing a local build or an unsigned release artifact, macOS may block Clipy on first launch.
+If you're testing a local build or an unnotarized release artifact, macOS may block Clipy on first launch.
 
 1. In Finder, open `Applications`
 2. Control-click `Clipy.app`
@@ -43,7 +43,7 @@ If the app is still blocked:
 3. Click `Open Anyway` for Clipy
 4. Retry launching the app and confirm the final prompt
 
-This bypass is only needed for unsigned or unnotarized builds. Proper Developer ID-signed releases should launch normally.
+This bypass is only needed for local or unnotarized builds. Proper Developer ID-signed releases should launch normally.
 
 ### Permissions
 
@@ -53,7 +53,7 @@ Clipy can capture clipboard history immediately, but pasting selected history it
 2. Approve the prompt, or open `System Settings` → `Privacy & Security` → `Accessibility`
 3. Enable Clipy and retry the paste
 
-> Accessibility permission persists across updates — no need to re-grant.
+> Accessibility permission persists across Developer ID-signed updates. Manual unnotarized releases may require removing and re-adding Clipy once after replacing the app.
 
 ### Build from Source
 
@@ -77,18 +77,18 @@ For example, the release cycle started on April 15, 2026 is `26.4.0`.
 
 **Sparkle:** Preferences → Updates → **Check for Updates** when you're running a Developer ID-signed release with a published appcast.
 
-**GitHub Releases fallback:** Preferences → Updates → **Check GitHub Releases** when you're running an unsigned or manual-install build.
+**GitHub Releases fallback:** Preferences → Updates → **Check GitHub Releases** when you're running a locally signed or manual-install build.
 
 **Manual reinstall:** Download the latest DMG, drag to Applications (replace existing), and launch.
 
-If Gatekeeper blocks the app, follow the unsigned-build bypass steps above.
+If Gatekeeper blocks the app, follow the manual-build bypass steps above.
 
 ### Release Infrastructure
 
 Clipy supports two distribution modes:
 
 - Developer ID-signed and notarized releases with Sparkle appcasts and in-app updates
-- Unsigned manual-download releases with a GitHub Releases fallback in Preferences
+- Locally signed manual-download releases with a GitHub Releases fallback in Preferences
 
 Maintainer-facing signing, appcast, and GitHub Actions setup lives in [RELEASING.md](RELEASING.md).
 
@@ -219,7 +219,7 @@ Collect multiple clips and paste them all at once — merged with a configurable
 
 ### Other Features
 
-- **Updates** — Sparkle for signed releases, plus a GitHub Releases fallback for manual or unsigned installs
+- **Updates** — Sparkle for Developer ID-signed releases, plus a GitHub Releases fallback for manual installs
 - **Color code detection** with visual swatch preview
 - **Exclude apps** from clipboard monitoring
 - **Hotkey support** for history, snippets, and snippet folders

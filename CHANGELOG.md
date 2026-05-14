@@ -7,6 +7,11 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.2] - 2026-05-14
+
+### Fixed
+- Fixed manual release packaging so non-Developer ID builds are still locally code-signed with the `com.clipy-app.Clipy` bundle identity, allowing macOS Accessibility permission to attach to the app instead of an ad hoc executable signature.
+
 ## [26.5.1] - 2026-05-14
 
 ### Added

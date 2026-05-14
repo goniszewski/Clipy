@@ -42,6 +42,9 @@ jobs:
       - name: Verify generated files are committed
         run: git diff --exit-code -- Clipy/Generated
 
+      - name: Verify release workflow
+        run: ./scripts/verify-release-workflow.sh
+
   build:
     runs-on: macos-15
     steps:

@@ -7,7 +7,7 @@ This document covers the maintainer-facing release setup that the public `README
 Clipy supports two distribution modes:
 
 - Developer ID-signed and notarized releases with Sparkle appcasts and in-app updates
-- Unsigned manual-download releases with a GitHub Releases fallback in Preferences
+- Locally signed manual-download releases with a GitHub Releases fallback in Preferences
 
 ## Release Infrastructure
 
@@ -52,6 +52,6 @@ rm /tmp/clipy-sparkle-private-key
 
 ## Workflow Behavior
 
-If the Apple signing secrets are not configured yet, the Release workflow falls back to publishing unsigned, unnotarized artifacts as manual-download releases only. Users can still install them by following the Gatekeeper bypass steps in the main `README`, but Sparkle appcasts are skipped because unsigned builds cannot be validated as automatic updates.
+If the Apple signing secrets are not configured yet, the Release workflow creates a temporary local code-signing identity and publishes locally signed, unnotarized artifacts as manual-download releases only. Users can still install them by following the Gatekeeper bypass steps in the main `README`, but Sparkle appcasts are skipped because locally signed builds cannot be validated as automatic updates.
 
 If `SPARKLE_PRIVATE_KEY` is missing or empty, the Release workflow skips appcast generation and publishes a manual-download release only.
