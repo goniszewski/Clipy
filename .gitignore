@@ -157,3 +157,6 @@ build-iPhoneSimulator/
 
 # Remotion demo video source (marketing tooling, not app code)
 demo-video/
+
+# Local agent scratch artifacts
+.superpowers/
