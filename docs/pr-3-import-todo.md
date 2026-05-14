@@ -131,8 +131,15 @@ Source PR: https://github.com/goniszewski/Clipy/pull/3
 
 ### Phase 7: Plugin System Redesign
 
-- [ ] Do not import the PR plugin system as-is.
-- [ ] Decide whether Clipy Classic actually needs plugins in core.
+- [x] Do not import the PR plugin system as-is.
+- [x] Decide whether Clipy Classic actually needs plugins in core.
+- [x] Defer plugins from this import. Script snippets and the optional template gallery cover the current advanced/manual workflows; a core plugin system needs a separate product and security design before implementation.
+- [x] Record PR #3 plugin review notes:
+  - PR #3 scans `~/.clipy/plugins`, adds a Plugins preferences tab, and can run enabled auto-trigger plugins after every saved string clip.
+  - PR #3 command validation rejects absolute paths and `..`, but it does not resolve symlinks before containment checks.
+  - PR #3 executes plugins through shell-composed commands instead of running the executable directly with `Process`.
+  - PR #3 has no rate limiting, concurrency caps, cancellation, stale-result handling, or focused tests for plugin parsing/execution failure paths.
+  - PR #3 stores plugin enabled state directly in `UserDefaults.standard`, outside the app environment abstraction used by tests.
 - [ ] If yes, start with manual plugins only.
 - [ ] Keep plugins disabled by default.
 - [ ] Document the plugin trust model in-app or in docs.

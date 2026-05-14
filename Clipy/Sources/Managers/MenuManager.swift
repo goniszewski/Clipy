@@ -35,6 +35,31 @@ enum MenuListNumbering {
     }
 }
 
+enum HistoryMenuPlacement: Equatable {
+    case inline
+    case submenu(groupIndex: Int, itemIndex: Int)
+}
+
+enum HistoryMenuLayout {
+    static func firstSubmenuIndex(existingItemCount: Int, inlineCapacity: Int, visibleClipCount: Int) -> Int? {
+        let inlineItemCount = max(0, inlineCapacity)
+        guard visibleClipCount > inlineItemCount else { return nil }
+        return existingItemCount + 1 + inlineItemCount
+    }
+
+    static func placement(forClipIndex clipIndex: Int, inlineCapacity: Int, itemsPerSubmenu: Int) -> HistoryMenuPlacement {
+        let inlineItemCount = max(0, inlineCapacity)
+        guard clipIndex >= inlineItemCount else { return .inline }
+
+        let safeItemsPerSubmenu = max(1, itemsPerSubmenu)
+        let submenuOffset = max(0, clipIndex - inlineItemCount)
+        return .submenu(
+            groupIndex: submenuOffset / safeItemsPerSubmenu,
+            itemIndex: submenuOffset % safeItemsPerSubmenu
+        )
+    }
+}
+
 final class MenuManager: NSObject {
 
     // MARK: - Properties
@@ -580,8 +605,7 @@ private extension MenuManager {
         // History
         let firstIndex = firstIndexOfMenuItems()
         var listNumber = firstIndex
-        var subMenuCount = placeInLine
-        var subMenuIndex = menu.numberOfItems + placeInLine
+        var currentSubMenu: NSMenu?
         var parentListNumber = firstIndex
 
         let ascending = !AppEnvironment.current.defaults.bool(forKey: Constants.UserDefaults.reorderClipsAfterPasting)
@@ -592,36 +616,36 @@ private extension MenuManager {
         ])
         let currentSize = min(maxHistory, Int(clipResults.count))
         var i = 0
+
         for clip in clipResults {
-            if placeInLine < 1 || placeInLine - 1 < i {
-                if i == subMenuCount {
-                    let subMenuItem = makeSubmenuItem(subMenuCount,
+            switch HistoryMenuLayout.placement(forClipIndex: i, inlineCapacity: placeInLine, itemsPerSubmenu: placeInsideFolder) {
+            case .inline:
+                let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
+                menu.addItem(menuItem)
+                listNumber = incrementListNumber(listNumber, max: placeInLine, start: firstIndex)
+
+            case let .submenu(groupIndex, itemIndex):
+                if itemIndex == 0 {
+                    let subMenuStart = placeInLine + groupIndex * placeInsideFolder
+                    let subMenuItem = makeSubmenuItem(subMenuStart,
                                                       start: firstIndex,
                                                       end: currentSize,
                                                       numberOfItems: placeInsideFolder,
                                                       listNumber: parentListNumber)
                     menu.addItem(subMenuItem)
+                    currentSubMenu = subMenuItem.submenu
                     listNumber = firstIndex
                     parentListNumber = incrementListNumber(parentListNumber, max: kMaxKeyEquivalents, start: firstIndex)
                 }
 
-                if let subMenu = menu.item(at: subMenuIndex)?.submenu {
+                if let subMenu = currentSubMenu {
                     let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
                     subMenu.addItem(menuItem)
                     listNumber = incrementListNumber(listNumber, max: placeInsideFolder, start: firstIndex)
                 }
-            } else {
-                let menuItem = makeClipMenuItem(clip, listNumber: listNumber)
-                menu.addItem(menuItem)
-                listNumber = incrementListNumber(listNumber, max: placeInLine, start: firstIndex)
             }
 
             i += 1
-            if i == subMenuCount + placeInsideFolder {
-                subMenuCount += placeInsideFolder
-                subMenuIndex += 1
-            }
-
             if maxHistory <= i { break }
         }
     }

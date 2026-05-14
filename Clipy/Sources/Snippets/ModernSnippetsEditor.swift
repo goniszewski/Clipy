@@ -364,6 +364,9 @@ class SnippetsEditorViewModel: ObservableObject {
     var totalSnippetCount: Int {
         folders.reduce(0) { $0 + $1.snippets.count }
     }
+}
+
+extension SnippetsEditorViewModel {
 
     // MARK: - Arrow Key Navigation
 
