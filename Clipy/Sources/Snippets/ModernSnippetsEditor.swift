@@ -683,9 +683,11 @@ extension SnippetsEditorViewModel {
     }
 }
 
-enum SnippetDragPayload {
+enum SnippetDragPayload: Equatable {
     private static let prefix = "clipy-snippet-editor-reorder:"
+    private static let processToken = UUID().uuidString
     static let contentType = UTType(exportedAs: "com.clipyapp.clipy.snippet-reorder")
+    static let fallbackContentType = UTType.utf8PlainText
 
     case folder(String)
     case snippet(String)
@@ -694,14 +696,14 @@ enum SnippetDragPayload {
         guard rawValue.hasPrefix(Self.prefix) else { return nil }
 
         let payload = rawValue.dropFirst(Self.prefix.count)
-        let parts = payload.split(separator: ":", maxSplits: 1).map(String.init)
-        guard parts.count == 2 else { return nil }
+        let parts = payload.split(separator: ":", maxSplits: 2).map(String.init)
+        guard parts.count == 3, parts[0] == Self.processToken else { return nil }
 
-        switch parts[0] {
+        switch parts[1] {
         case "folder":
-            self = .folder(parts[1])
+            self = .folder(parts[2])
         case "snippet":
-            self = .snippet(parts[1])
+            self = .snippet(parts[2])
         default:
             return nil
         }
@@ -710,10 +712,25 @@ enum SnippetDragPayload {
     var rawValue: String {
         switch self {
         case .folder(let identifier):
-            return "\(Self.prefix)folder:\(identifier)"
+            return "\(Self.prefix)\(Self.processToken):folder:\(identifier)"
         case .snippet(let identifier):
-            return "\(Self.prefix)snippet:\(identifier)"
+            return "\(Self.prefix)\(Self.processToken):snippet:\(identifier)"
         }
+    }
+
+    func itemProvider() -> NSItemProvider {
+        let provider = NSItemProvider()
+        [Self.contentType, Self.fallbackContentType].forEach { type in
+            provider.registerDataRepresentation(
+                forTypeIdentifier: type.identifier,
+                visibility: .ownProcess
+            ) { completion in
+                completion(rawValue.data(using: .utf8), nil)
+                return nil
+            }
+        }
+        provider.suggestedName = "Clipy Snippet Reorder"
+        return provider
     }
 }
 
@@ -734,7 +751,7 @@ enum SnippetDropTarget {
     case snippetEnd(folderID: String, snippetCount: Int)
 
     var acceptedTypes: [UTType] {
-        [SnippetDragPayload.contentType]
+        [SnippetDragPayload.fallbackContentType, SnippetDragPayload.contentType]
     }
 }
 
@@ -743,7 +760,7 @@ private struct SnippetDropDelegate: DropDelegate {
     let actions: SnippetDropActions
 
     func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: target.acceptedTypes)
+        actions.activePayload() != nil && info.hasItemsConforming(to: target.acceptedTypes)
     }
 
     func dropEntered(info: DropInfo) {
@@ -751,7 +768,8 @@ private struct SnippetDropDelegate: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+        guard validateDrop(info: info) else { return nil }
+        return DropProposal(operation: .move)
     }
 
     func dropExited(info: DropInfo) {
@@ -759,6 +777,11 @@ private struct SnippetDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
+        guard let activePayload = actions.activePayload() else {
+            actions.ended()
+            return false
+        }
+
         guard let type = target.acceptedTypes.first(where: { !info.itemProviders(for: [$0]).isEmpty }),
               let provider = info.itemProviders(for: [type]).first else {
             actions.ended()
@@ -769,7 +792,8 @@ private struct SnippetDropDelegate: DropDelegate {
             DispatchQueue.main.async {
                 defer { actions.ended() }
                 guard let rawValue = Self.rawString(from: item),
-                      let payload = SnippetDragPayload(rawValue: rawValue) else { return }
+                      let payload = SnippetDragPayload(rawValue: rawValue),
+                      payload == activePayload else { return }
                 actions.payload(payload, target)
             }
         }
@@ -791,6 +815,7 @@ private struct SnippetDropDelegate: DropDelegate {
 }
 
 private struct SnippetDropActions {
+    let activePayload: () -> SnippetDragPayload?
     let payload: (SnippetDragPayload, SnippetDropTarget) -> Void
     let entered: (SnippetDropTarget) -> Void
     let exited: (SnippetDropTarget) -> Void
@@ -876,6 +901,40 @@ private struct WindowDragRegion: NSViewRepresentable {
     }
 }
 
+enum SnippetWindowChromeItem: Hashable {
+    case devBadge
+    case closeButton
+}
+
+enum SnippetWindowChromeLayout {
+    static let edgePadding: CGFloat = 8
+    static let closeButtonSize: CGFloat = 24
+    static let controlSpacing: CGFloat = 8
+    static let contentGap: CGFloat = 12
+
+    #if DEBUG
+    private static let devBadgeWidth: CGFloat = 32
+    #else
+    private static let devBadgeWidth: CGFloat = 0
+    #endif
+
+    static var topTrailingControlsWidth: CGFloat {
+        closeButtonSize + devBadgeWidth + (devBadgeWidth > 0 ? controlSpacing : 0)
+    }
+
+    static var controlOrder: [SnippetWindowChromeItem] {
+        #if DEBUG
+        [.devBadge, .closeButton]
+        #else
+        [.closeButton]
+        #endif
+    }
+
+    static var headerTrailingReserve: CGFloat {
+        edgePadding + topTrailingControlsWidth + contentGap
+    }
+}
+
 // MARK: - Main Editor View
 // swiftlint:disable:next type_body_length
 struct ModernSnippetsEditorView: View {
@@ -888,14 +947,6 @@ struct ModernSnippetsEditorView: View {
 
     private var reorderEnabled: Bool {
         viewModel.sidebarFilter.isEmpty
-    }
-
-    private var closeButtonTrailingPadding: CGFloat {
-        #if DEBUG
-        52
-        #else
-        8
-        #endif
     }
 
     private var scriptShellOptions: [String] {
@@ -952,6 +1003,7 @@ struct ModernSnippetsEditorView: View {
 
     private var dropActions: SnippetDropActions {
         SnippetDropActions(
+            activePayload: { reorderEnabled ? draggedPayload : nil },
             payload: handleDrop,
             entered: handleDropEntered,
             exited: handleDropExited,
@@ -978,13 +1030,50 @@ struct ModernSnippetsEditorView: View {
             WindowDragRegion()
                 .frame(height: 8)
         }
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .topTrailing) { topTrailingChrome }
+        .onAppear { viewModel.load() }
+        .onChange(of: viewModel.needsRefocus) { _, needs in
+            if needs {
+                viewModel.needsRefocus = false
+                sidebarFocused = true
+            }
+        }
+    }
+
+    private var topTrailingChrome: some View {
+        HStack(spacing: SnippetWindowChromeLayout.controlSpacing) {
+            ForEach(SnippetWindowChromeLayout.controlOrder, id: \.self) { item in
+                topTrailingChromeItem(item)
+            }
+        }
+        .padding(SnippetWindowChromeLayout.edgePadding)
+    }
+
+    @ViewBuilder
+    private func topTrailingChromeItem(_ item: SnippetWindowChromeItem) -> some View {
+        switch item {
+        case .devBadge:
+            #if DEBUG
+            Text("DEV")
+                .font(.system(size: 8, weight: .black, design: .monospaced))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            #else
+            EmptyView()
+            #endif
+        case .closeButton:
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .background(.white.opacity(0.07))
+                    .frame(
+                        width: SnippetWindowChromeLayout.closeButtonSize,
+                        height: SnippetWindowChromeLayout.closeButtonSize
+                    )
+                    .background(.black.opacity(0.18))
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -993,16 +1082,6 @@ struct ModernSnippetsEditorView: View {
             }
             .buttonStyle(.plain)
             .help("Close")
-            .padding(.top, 8)
-            .padding(.trailing, closeButtonTrailingPadding)
-        }
-        .overlay(DevBadgeOverlay())
-        .onAppear { viewModel.load() }
-        .onChange(of: viewModel.needsRefocus) { _, needs in
-            if needs {
-                viewModel.needsRefocus = false
-                sidebarFocused = true
-            }
         }
     }
 
@@ -1087,16 +1166,7 @@ struct ModernSnippetsEditorView: View {
 
     private func dragProvider(for payload: SnippetDragPayload) -> NSItemProvider {
         draggedPayload = payload
-        let provider = NSItemProvider()
-        provider.registerDataRepresentation(
-            forTypeIdentifier: SnippetDragPayload.contentType.identifier,
-            visibility: .ownProcess
-        ) { completion in
-            completion(payload.rawValue.data(using: .utf8), nil)
-            return nil
-        }
-        provider.suggestedName = "Clipy Snippet Reorder"
-        return provider
+        return payload.itemProvider()
     }
 
     private func handleDropEntered(target: SnippetDropTarget) {
@@ -1260,6 +1330,7 @@ struct ModernSnippetsEditorView: View {
                     .frame(width: 7, height: 7)
                     .help(snippet.enabled ? "Enabled" : "Disabled")
             }
+            .padding(.trailing, SnippetWindowChromeLayout.headerTrailingReserve)
 
             VStack(alignment: .leading, spacing: 7) {
                 Picker("", selection: snippetTypeBinding) {
