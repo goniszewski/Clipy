@@ -848,6 +848,22 @@ class SnippetsEditorViewModelSpec: AsyncSpec {
         }
 
         describe("Modern snippets editor drag payloads") {
+            it("resolves a drop from the active in-process payload") {
+                let payload = SnippetDragPayload.snippet("snippet")
+
+                expect(SnippetDropPayloadResolution.resolve(activePayload: payload, hasConformingItems: true)) == payload
+            }
+
+            it("does not resolve drops without an active in-process payload") {
+                expect(SnippetDropPayloadResolution.resolve(activePayload: nil, hasConformingItems: true)).to(beNil())
+            }
+
+            it("does not resolve drops whose item providers do not conform") {
+                let payload = SnippetDragPayload.snippet("snippet")
+
+                expect(SnippetDropPayloadResolution.resolve(activePayload: payload, hasConformingItems: false)).to(beNil())
+            }
+
             it("accepts Clipy payloads through the private type and a public text fallback") {
                 let acceptedTypes = SnippetDropTarget
                     .snippet(folderID: "folder", snippetIndex: 0)

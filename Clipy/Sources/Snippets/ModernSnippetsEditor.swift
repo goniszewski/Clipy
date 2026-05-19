@@ -755,12 +755,22 @@ enum SnippetDropTarget {
     }
 }
 
+enum SnippetDropPayloadResolution {
+    static func resolve(activePayload: SnippetDragPayload?, hasConformingItems: Bool) -> SnippetDragPayload? {
+        guard hasConformingItems else { return nil }
+        return activePayload
+    }
+}
+
 private struct SnippetDropDelegate: DropDelegate {
     let target: SnippetDropTarget
     let actions: SnippetDropActions
 
     func validateDrop(info: DropInfo) -> Bool {
-        actions.activePayload() != nil && info.hasItemsConforming(to: target.acceptedTypes)
+        SnippetDropPayloadResolution.resolve(
+            activePayload: actions.activePayload(),
+            hasConformingItems: info.hasItemsConforming(to: target.acceptedTypes)
+        ) != nil
     }
 
     func dropEntered(info: DropInfo) {
@@ -777,40 +787,19 @@ private struct SnippetDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        guard let activePayload = actions.activePayload() else {
+        guard let payload = SnippetDropPayloadResolution.resolve(
+            activePayload: actions.activePayload(),
+            hasConformingItems: info.hasItemsConforming(to: target.acceptedTypes)
+        ) else {
             actions.ended()
             return false
         }
 
-        guard let type = target.acceptedTypes.first(where: { !info.itemProviders(for: [$0]).isEmpty }),
-              let provider = info.itemProviders(for: [type]).first else {
-            actions.ended()
-            return false
-        }
-
-        provider.loadItem(forTypeIdentifier: type.identifier, options: nil) { item, _ in
-            DispatchQueue.main.async {
-                defer { actions.ended() }
-                guard let rawValue = Self.rawString(from: item),
-                      let payload = SnippetDragPayload(rawValue: rawValue),
-                      payload == activePayload else { return }
-                actions.payload(payload, target)
-            }
-        }
+        // This drag starts inside the editor, so the process-local payload is already
+        // authoritative; the item provider only lets SwiftUI route compatible drops.
+        actions.payload(payload, target)
+        actions.ended()
         return true
-    }
-
-    private static func rawString(from item: NSSecureCoding?) -> String? {
-        if let string = item as? String {
-            return string
-        }
-        if let string = item as? NSString {
-            return string as String
-        }
-        if let data = item as? Data {
-            return String(data: data, encoding: .utf8)
-        }
-        return nil
     }
 }
 

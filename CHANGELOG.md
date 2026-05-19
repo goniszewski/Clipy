@@ -7,6 +7,11 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.4] - 2026-05-19
+
+### Fixed
+- Fixed snippet editor reordering so dropping a dragged folder or snippet applies the same in-process payload that drives the drop indicator.
+
 ## [26.5.3] - 2026-05-15
 
 ### Fixed
