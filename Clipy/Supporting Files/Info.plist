@@ -44,5 +44,18 @@
 	<string>fwrBDOjQYy+InTwRwtyp730uPLt04hMDWIwiju3tyEI=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Clipy snippet reorder payload</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.clipyapp.clipy.snippet-reorder</string>
+		</dict>
+	</array>
 </dict>
 </plist>

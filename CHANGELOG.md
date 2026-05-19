@@ -7,6 +7,17 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 
 ## [Unreleased]
 
+## [26.5.4] - 2026-05-19
+
+### Fixed
+- Fixed snippet editor reordering so dropping a dragged folder or snippet applies the same in-process payload that drives the drop indicator.
+
+## [26.5.3] - 2026-05-15
+
+### Fixed
+- Restored snippet editor drag and drop in packaged builds by declaring the private drag payload type and adding a standard text fallback while keeping Clipy-only payload validation.
+- Fixed the snippets editor top-right window controls so the close button and `DEV` badge no longer overlap snippet header content.
+
 ## [26.5.2] - 2026-05-14
 
 ### Fixed
@@ -31,6 +42,7 @@ and starting on April 15, 2026 this project uses calendar-based versions in the 
 ### Fixed
 - Fixed history menu overflow layout so inline and submenu placement honors menu size preferences
 - Fixed list numbering so the 10th visible item displays as `10.` while keeping the `0` shortcut
+
 ## [26.5.0] - 2026-05-13
 
 ### Added

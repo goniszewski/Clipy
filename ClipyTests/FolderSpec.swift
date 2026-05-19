@@ -2,6 +2,7 @@ import Foundation
 import Quick
 import Nimble
 import RealmSwift
+import UniformTypeIdentifiers
 @testable import Clipy
 
 // swiftlint:disable function_body_length type_body_length
@@ -843,6 +844,66 @@ class SnippetsEditorViewModelSpec: AsyncSpec {
 
                     expect(indicator) == .folder(folderID: second.identifier, edge: .after)
                 }
+            }
+        }
+
+        describe("Modern snippets editor drag payloads") {
+            it("resolves a drop from the active in-process payload") {
+                let payload = SnippetDragPayload.snippet("snippet")
+
+                expect(SnippetDropPayloadResolution.resolve(activePayload: payload, hasConformingItems: true)) == payload
+            }
+
+            it("does not resolve drops without an active in-process payload") {
+                expect(SnippetDropPayloadResolution.resolve(activePayload: nil, hasConformingItems: true)).to(beNil())
+            }
+
+            it("does not resolve drops whose item providers do not conform") {
+                let payload = SnippetDragPayload.snippet("snippet")
+
+                expect(SnippetDropPayloadResolution.resolve(activePayload: payload, hasConformingItems: false)).to(beNil())
+            }
+
+            it("accepts Clipy payloads through the private type and a public text fallback") {
+                let acceptedTypes = SnippetDropTarget
+                    .snippet(folderID: "folder", snippetIndex: 0)
+                    .acceptedTypes
+                    .map(\.identifier)
+
+                expect(acceptedTypes).to(contain(SnippetDragPayload.contentType.identifier))
+                expect(acceptedTypes).to(contain(UTType.utf8PlainText.identifier))
+                expect(acceptedTypes.first) == UTType.utf8PlainText.identifier
+            }
+
+            it("publishes drag payloads as both Clipy's private type and plain text") {
+                let registeredTypes = SnippetDragPayload
+                    .snippet("snippet")
+                    .itemProvider()
+                    .registeredTypeIdentifiers
+
+                expect(registeredTypes).to(contain(SnippetDragPayload.contentType.identifier))
+                expect(registeredTypes).to(contain(UTType.utf8PlainText.identifier))
+            }
+
+            it("rejects public text that is not a Clipy reorder payload") {
+                expect(SnippetDragPayload(rawValue: "plain text")).to(beNil())
+            }
+
+            it("rejects reorder-looking public text that was not created by this Clipy process") {
+                let payload = SnippetDragPayload.snippet("snippet")
+
+                expect(SnippetDragPayload(rawValue: payload.rawValue)) == payload
+                expect(SnippetDragPayload(rawValue: "clipy-snippet-editor-reorder:snippet:snippet")).to(beNil())
+            }
+        }
+
+        describe("Modern snippets editor window chrome") {
+            it("reserves editor header space for the top-right window controls") {
+                expect(SnippetWindowChromeLayout.headerTrailingReserve) > SnippetWindowChromeLayout.topTrailingControlsWidth
+            }
+
+            it("keeps the close button anchored as the trailing-most control") {
+                expect(SnippetWindowChromeLayout.controlOrder.last) == .closeButton
             }
         }
 
